@@ -1,0 +1,10 @@
+[tools]
+buf = "1.48.0"
+
+[tasks.lint]
+description = "Run linters."
+run = "golangci-lint run"
+
+[tasks.run]
+description = "Run `go run`"
+run = "go run cmd/app/main.go"

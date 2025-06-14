@@ -1,0 +1,32 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - govet
+    - unused
+    - bodyclose
+    - canonicalheader
+    - contextcheck
+    - dupl
+    - dupword
+    - errname
+    - exhaustive
+    - exhaustruct
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gochecksumtype
+    - gosec
+    - iface
+    - protogetter
+
+formatters:
+  enable:
+    - goimports
+    - gofmt
+
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/vterdunov/learn-bank-app
