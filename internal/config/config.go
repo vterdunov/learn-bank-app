@@ -11,6 +11,7 @@ type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	SMTP     SMTPConfig
+	CBR      CBRConfig
 }
 
 type ServerConfig struct {
@@ -38,6 +39,11 @@ type SMTPConfig struct {
 	Password string
 }
 
+type CBRConfig struct {
+	ServiceURL string
+	BankMargin float64
+}
+
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
@@ -61,6 +67,10 @@ func Load() (*Config, error) {
 			Username: getEnvString("SMTP_USERNAME", ""),
 			Password: getEnvString("SMTP_PASSWORD", ""),
 		},
+		CBR: CBRConfig{
+			ServiceURL: getEnvString("CBR_SERVICE_URL", "https://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx"),
+			BankMargin: getEnvFloat("CBR_BANK_MARGIN", 5.0),
+		},
 	}
 
 	if cfg.JWT.Secret == "" {
@@ -81,6 +91,15 @@ func getEnvInt(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
 			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvFloat(key string, defaultValue float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatValue
 		}
 	}
 	return defaultValue

@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/beevik/etree v1.5.1 // indirect
 	github.com/go-mail/mail/v2 v2.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
