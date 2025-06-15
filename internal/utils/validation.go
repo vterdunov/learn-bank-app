@@ -3,7 +3,9 @@ package utils
 import (
 	"errors"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -22,6 +24,16 @@ var (
 	ErrUsernameExists = errors.New("username already exists")
 	// ErrUserNotFound возвращается когда пользователь не найден
 	ErrUserNotFound = errors.New("user not found")
+	// ErrInvalidAccountNumber возвращается при некорректном номере счета
+	ErrInvalidAccountNumber = errors.New("invalid account number")
+	// ErrInvalidCardNumber возвращается при некорректном номере карты
+	ErrInvalidCardNumber = errors.New("invalid card number")
+	// ErrInvalidDate возвращается при некорректной дате
+	ErrInvalidDate = errors.New("invalid date")
+	// ErrInvalidStatus возвращается при некорректном статусе
+	ErrInvalidStatus = errors.New("invalid status")
+	// ErrInvalidCVV возвращается при некорректном CVV
+	ErrInvalidCVV = errors.New("invalid CVV")
 )
 
 // emailRegex регулярное выражение для валидации email
@@ -29,6 +41,9 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]
 
 // usernameRegex регулярное выражение для валидации username
 var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
+// accountNumberRegex регулярное выражение для номера счета (20 цифр)
+var accountNumberRegex = regexp.MustCompile(`^\d{20}$`)
 
 // ValidateEmail проверяет корректность email адреса
 func ValidateEmail(email string) error {
@@ -138,6 +153,231 @@ func ValidateCurrency(currency string) error {
 	// Поддерживается только RUB согласно ТЗ
 	if strings.ToUpper(currency) != "RUB" {
 		return errors.New("only RUB currency is supported")
+	}
+
+	return nil
+}
+
+// ValidateAccountNumber проверяет номер банковского счета
+func ValidateAccountNumber(accountNumber string) error {
+	if strings.TrimSpace(accountNumber) == "" {
+		return ErrEmptyField
+	}
+
+	// Номер счета должен состоять из 20 цифр
+	if !accountNumberRegex.MatchString(accountNumber) {
+		return ErrInvalidAccountNumber
+	}
+
+	return nil
+}
+
+// ValidateCardNumber проверяет номер карты с помощью алгоритма Луна
+func ValidateCardNumber(cardNumber string) error {
+	if strings.TrimSpace(cardNumber) == "" {
+		return ErrEmptyField
+	}
+
+	// Удаляем пробелы и дефисы
+	cardNumber = strings.ReplaceAll(strings.ReplaceAll(cardNumber, " ", ""), "-", "")
+
+	// Проверяем что состоит только из цифр
+	if _, err := strconv.Atoi(cardNumber); err != nil {
+		return ErrInvalidCardNumber
+	}
+
+	// Длина должна быть от 13 до 19 цифр
+	if len(cardNumber) < 13 || len(cardNumber) > 19 {
+		return ErrInvalidCardNumber
+	}
+
+	// Проверка алгоритмом Луна
+	if !isValidLuhn(cardNumber) {
+		return ErrInvalidCardNumber
+	}
+
+	return nil
+}
+
+// isValidLuhn проверяет номер карты алгоритмом Луна
+func isValidLuhn(cardNumber string) bool {
+	var sum int
+	alternate := false
+
+	// Обходим цифры справа налево
+	for i := len(cardNumber) - 1; i >= 0; i-- {
+		digit := int(cardNumber[i] - '0')
+
+		if alternate {
+			digit *= 2
+			if digit > 9 {
+				digit = digit%10 + digit/10
+			}
+		}
+
+		sum += digit
+		alternate = !alternate
+	}
+
+	return sum%10 == 0
+}
+
+// ValidateCVV проверяет CVV код карты
+func ValidateCVV(cvv string) error {
+	if strings.TrimSpace(cvv) == "" {
+		return ErrEmptyField
+	}
+
+	// CVV должен состоять из 3 или 4 цифр
+	if len(cvv) < 3 || len(cvv) > 4 {
+		return ErrInvalidCVV
+	}
+
+	// Проверяем что состоит только из цифр
+	if _, err := strconv.Atoi(cvv); err != nil {
+		return ErrInvalidCVV
+	}
+
+	return nil
+}
+
+// ValidateExpiryDate проверяет срок действия карты
+func ValidateExpiryDate(expiryDate time.Time) error {
+	now := time.Now()
+
+	// Срок действия не должен быть в прошлом
+	if expiryDate.Before(now) {
+		return ErrInvalidDate
+	}
+
+	// Срок действия не должен быть более чем через 10 лет
+	maxDate := now.AddDate(10, 0, 0)
+	if expiryDate.After(maxDate) {
+		return ErrInvalidDate
+	}
+
+	return nil
+}
+
+// ValidateDueDate проверяет дату платежа
+func ValidateDueDate(dueDate time.Time) error {
+	now := time.Now()
+
+	// Дата платежа должна быть в будущем
+	if dueDate.Before(now.AddDate(0, 0, -1)) { // Разрешаем вчерашнюю дату
+		return ErrInvalidDate
+	}
+
+	// Дата платежа не должна быть более чем через 50 лет
+	maxDate := now.AddDate(50, 0, 0)
+	if dueDate.After(maxDate) {
+		return ErrInvalidDate
+	}
+
+	return nil
+}
+
+// ValidateAccountStatus проверяет статус счета
+func ValidateAccountStatus(status string) error {
+	validStatuses := []string{"active", "blocked", "closed"}
+
+	for _, validStatus := range validStatuses {
+		if status == validStatus {
+			return nil
+		}
+	}
+
+	return ErrInvalidStatus
+}
+
+// ValidateCardStatus проверяет статус карты
+func ValidateCardStatus(status string) error {
+	validStatuses := []string{"active", "blocked", "expired"}
+
+	for _, validStatus := range validStatuses {
+		if status == validStatus {
+			return nil
+		}
+	}
+
+	return ErrInvalidStatus
+}
+
+// ValidateTransactionType проверяет тип транзакции
+func ValidateTransactionType(transactionType string) error {
+	validTypes := []string{"deposit", "withdraw", "transfer", "payment", "credit"}
+
+	for _, validType := range validTypes {
+		if transactionType == validType {
+			return nil
+		}
+	}
+
+	return ErrInvalidStatus
+}
+
+// ValidateTransactionStatus проверяет статус транзакции
+func ValidateTransactionStatus(status string) error {
+	validStatuses := []string{"pending", "completed", "failed", "cancelled"}
+
+	for _, validStatus := range validStatuses {
+		if status == validStatus {
+			return nil
+		}
+	}
+
+	return ErrInvalidStatus
+}
+
+// ValidateCreditStatus проверяет статус кредита
+func ValidateCreditStatus(status string) error {
+	validStatuses := []string{"active", "paid_off", "overdue", "cancelled"}
+
+	for _, validStatus := range validStatuses {
+		if status == validStatus {
+			return nil
+		}
+	}
+
+	return ErrInvalidStatus
+}
+
+// ValidatePaymentStatus проверяет статус платежа
+func ValidatePaymentStatus(status string) error {
+	validStatuses := []string{"pending", "paid", "overdue", "cancelled"}
+
+	for _, validStatus := range validStatuses {
+		if status == validStatus {
+			return nil
+		}
+	}
+
+	return ErrInvalidStatus
+}
+
+// ValidateTermMonths проверяет срок кредита в месяцах
+func ValidateTermMonths(termMonths int) error {
+	if termMonths <= 0 {
+		return errors.New("term months must be positive")
+	}
+
+	// Максимальный срок кредита 30 лет (360 месяцев)
+	if termMonths > 360 {
+		return errors.New("term months too large")
+	}
+
+	return nil
+}
+
+// ValidateInterestRate проверяет процентную ставку
+func ValidateInterestRate(rate float64) error {
+	if rate < 0 {
+		return errors.New("interest rate cannot be negative")
+	}
+
+	// Максимальная ставка 100%
+	if rate > 100 {
+		return errors.New("interest rate too high")
 	}
 
 	return nil
