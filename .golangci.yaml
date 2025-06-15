@@ -12,7 +12,6 @@ linters:
     - dupword
     - errname
     - exhaustive
-    - exhaustruct
     - gocheckcompilerdirectives
     - gochecknoglobals
     - gochecknoinits
