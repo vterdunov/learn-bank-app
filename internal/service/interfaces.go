@@ -58,6 +58,13 @@ type CBRService interface {
 	GetKeyRate(ctx context.Context) (float64, error)
 }
 
+// SchedulerService определяет интерфейс сервиса шедулера
+type SchedulerService interface {
+	Start(ctx context.Context) error
+	Stop()
+	ProcessOverduePayments(ctx context.Context) error
+}
+
 // DTO структуры для запросов и ответов
 
 // RegisterRequest структура запроса регистрации

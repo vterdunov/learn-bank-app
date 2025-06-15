@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
-	SMTP     SMTPConfig
-	CBR      CBRConfig
+	Server    ServerConfig
+	Database  DatabaseConfig
+	JWT       JWTConfig
+	SMTP      SMTPConfig
+	CBR       CBRConfig
+	Scheduler SchedulerConfig
 }
 
 type ServerConfig struct {
@@ -44,6 +46,11 @@ type CBRConfig struct {
 	BankMargin float64
 }
 
+type SchedulerConfig struct {
+	Interval    time.Duration
+	PenaltyRate float64
+}
+
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
@@ -70,6 +77,10 @@ func Load() (*Config, error) {
 		CBR: CBRConfig{
 			ServiceURL: getEnvString("CBR_SERVICE_URL", "https://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx"),
 			BankMargin: getEnvFloat("CBR_BANK_MARGIN", 5.0),
+		},
+		Scheduler: SchedulerConfig{
+			Interval:    getEnvDuration("SCHEDULER_INTERVAL", 12*time.Hour),
+			PenaltyRate: getEnvFloat("SCHEDULER_PENALTY_RATE", 10.0),
 		},
 	}
 
@@ -100,6 +111,15 @@ func getEnvFloat(key string, defaultValue float64) float64 {
 	if value := os.Getenv(key); value != "" {
 		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
 			return floatValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		if duration, err := time.ParseDuration(value); err == nil {
+			return duration
 		}
 	}
 	return defaultValue
