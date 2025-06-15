@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 )
 
 // AccountRepositoryImpl реализация AccountRepository
@@ -22,7 +22,7 @@ func NewAccountRepository(db *pgxpool.Pool) AccountRepository {
 }
 
 // Create создает новый счет
-func (r *AccountRepositoryImpl) Create(ctx context.Context, account *models.Account) error {
+func (r *AccountRepositoryImpl) Create(ctx context.Context, account *domain.Account) error {
 	query := `
 		INSERT INTO accounts (user_id, number, balance, currency, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -46,13 +46,13 @@ func (r *AccountRepositoryImpl) Create(ctx context.Context, account *models.Acco
 }
 
 // GetByID получает счет по ID
-func (r *AccountRepositoryImpl) GetByID(ctx context.Context, id int) (*models.Account, error) {
+func (r *AccountRepositoryImpl) GetByID(ctx context.Context, id int) (*domain.Account, error) {
 	query := `
 		SELECT id, user_id, number, balance, currency, status, created_at, updated_at
 		FROM accounts
 		WHERE id = $1`
 
-	account := &models.Account{}
+	account := &domain.Account{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&account.ID,
 		&account.UserID,
@@ -75,7 +75,7 @@ func (r *AccountRepositoryImpl) GetByID(ctx context.Context, id int) (*models.Ac
 }
 
 // GetByUserID получает все счета пользователя
-func (r *AccountRepositoryImpl) GetByUserID(ctx context.Context, userID int) ([]*models.Account, error) {
+func (r *AccountRepositoryImpl) GetByUserID(ctx context.Context, userID int) ([]*domain.Account, error) {
 	query := `
 		SELECT id, user_id, number, balance, currency, status, created_at, updated_at
 		FROM accounts
@@ -88,9 +88,9 @@ func (r *AccountRepositoryImpl) GetByUserID(ctx context.Context, userID int) ([]
 	}
 	defer rows.Close()
 
-	var accounts []*models.Account
+	var accounts []*domain.Account
 	for rows.Next() {
-		account := &models.Account{}
+		account := &domain.Account{}
 		err := rows.Scan(
 			&account.ID,
 			&account.UserID,
@@ -111,13 +111,13 @@ func (r *AccountRepositoryImpl) GetByUserID(ctx context.Context, userID int) ([]
 }
 
 // GetByNumber получает счет по номеру
-func (r *AccountRepositoryImpl) GetByNumber(ctx context.Context, number string) (*models.Account, error) {
+func (r *AccountRepositoryImpl) GetByNumber(ctx context.Context, number string) (*domain.Account, error) {
 	query := `
 		SELECT id, user_id, number, balance, currency, status, created_at, updated_at
 		FROM accounts
 		WHERE number = $1`
 
-	account := &models.Account{}
+	account := &domain.Account{}
 	err := r.db.QueryRow(ctx, query, number).Scan(
 		&account.ID,
 		&account.UserID,
@@ -140,7 +140,7 @@ func (r *AccountRepositoryImpl) GetByNumber(ctx context.Context, number string) 
 }
 
 // Update обновляет данные счета
-func (r *AccountRepositoryImpl) Update(ctx context.Context, account *models.Account) error {
+func (r *AccountRepositoryImpl) Update(ctx context.Context, account *domain.Account) error {
 	query := `
 		UPDATE accounts
 		SET balance = $2, currency = $3, status = $4, updated_at = $5

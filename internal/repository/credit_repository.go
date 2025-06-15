@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 )
 
 // CreditRepositoryImpl реализация CreditRepository
@@ -22,7 +22,7 @@ func NewCreditRepository(db *pgxpool.Pool) CreditRepository {
 }
 
 // Create создает новый кредит
-func (r *CreditRepositoryImpl) Create(ctx context.Context, credit *models.Credit) error {
+func (r *CreditRepositoryImpl) Create(ctx context.Context, credit *domain.Credit) error {
 	query := `
 		INSERT INTO credits (user_id, account_id, amount, interest_rate, term_months, monthly_payment, remaining_debt, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -49,13 +49,13 @@ func (r *CreditRepositoryImpl) Create(ctx context.Context, credit *models.Credit
 }
 
 // GetByID получает кредит по ID
-func (r *CreditRepositoryImpl) GetByID(ctx context.Context, id int) (*models.Credit, error) {
+func (r *CreditRepositoryImpl) GetByID(ctx context.Context, id int) (*domain.Credit, error) {
 	query := `
 		SELECT id, user_id, account_id, amount, interest_rate, term_months, monthly_payment, remaining_debt, status, created_at, updated_at
 		FROM credits
 		WHERE id = $1`
 
-	credit := &models.Credit{}
+	credit := &domain.Credit{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&credit.ID,
 		&credit.UserID,
@@ -81,7 +81,7 @@ func (r *CreditRepositoryImpl) GetByID(ctx context.Context, id int) (*models.Cre
 }
 
 // GetByUserID получает все кредиты пользователя
-func (r *CreditRepositoryImpl) GetByUserID(ctx context.Context, userID int) ([]*models.Credit, error) {
+func (r *CreditRepositoryImpl) GetByUserID(ctx context.Context, userID int) ([]*domain.Credit, error) {
 	query := `
 		SELECT id, user_id, account_id, amount, interest_rate, term_months, monthly_payment, remaining_debt, status, created_at, updated_at
 		FROM credits
@@ -94,9 +94,9 @@ func (r *CreditRepositoryImpl) GetByUserID(ctx context.Context, userID int) ([]*
 	}
 	defer rows.Close()
 
-	var credits []*models.Credit
+	var credits []*domain.Credit
 	for rows.Next() {
-		credit := &models.Credit{}
+		credit := &domain.Credit{}
 		err := rows.Scan(
 			&credit.ID,
 			&credit.UserID,
@@ -120,7 +120,7 @@ func (r *CreditRepositoryImpl) GetByUserID(ctx context.Context, userID int) ([]*
 }
 
 // GetByAccountID получает все кредиты счета
-func (r *CreditRepositoryImpl) GetByAccountID(ctx context.Context, accountID int) ([]*models.Credit, error) {
+func (r *CreditRepositoryImpl) GetByAccountID(ctx context.Context, accountID int) ([]*domain.Credit, error) {
 	query := `
 		SELECT id, user_id, account_id, amount, interest_rate, term_months, monthly_payment, remaining_debt, status, created_at, updated_at
 		FROM credits
@@ -133,9 +133,9 @@ func (r *CreditRepositoryImpl) GetByAccountID(ctx context.Context, accountID int
 	}
 	defer rows.Close()
 
-	var credits []*models.Credit
+	var credits []*domain.Credit
 	for rows.Next() {
-		credit := &models.Credit{}
+		credit := &domain.Credit{}
 		err := rows.Scan(
 			&credit.ID,
 			&credit.UserID,
@@ -159,7 +159,7 @@ func (r *CreditRepositoryImpl) GetByAccountID(ctx context.Context, accountID int
 }
 
 // Update обновляет данные кредита
-func (r *CreditRepositoryImpl) Update(ctx context.Context, credit *models.Credit) error {
+func (r *CreditRepositoryImpl) Update(ctx context.Context, credit *domain.Credit) error {
 	query := `
 		UPDATE credits
 		SET amount = $2, interest_rate = $3, term_months = $4, monthly_payment = $5, remaining_debt = $6, status = $7, updated_at = $8
@@ -225,7 +225,7 @@ func (r *CreditRepositoryImpl) UpdateRemainingDebt(ctx context.Context, id int, 
 }
 
 // GetActiveCredits получает все активные кредиты
-func (r *CreditRepositoryImpl) GetActiveCredits(ctx context.Context) ([]*models.Credit, error) {
+func (r *CreditRepositoryImpl) GetActiveCredits(ctx context.Context) ([]*domain.Credit, error) {
 	query := `
 		SELECT id, user_id, account_id, amount, interest_rate, term_months, monthly_payment, remaining_debt, status, created_at, updated_at
 		FROM credits
@@ -238,9 +238,9 @@ func (r *CreditRepositoryImpl) GetActiveCredits(ctx context.Context) ([]*models.
 	}
 	defer rows.Close()
 
-	var credits []*models.Credit
+	var credits []*domain.Credit
 	for rows.Next() {
-		credit := &models.Credit{}
+		credit := &domain.Credit{}
 		err := rows.Scan(
 			&credit.ID,
 			&credit.UserID,
@@ -264,7 +264,7 @@ func (r *CreditRepositoryImpl) GetActiveCredits(ctx context.Context) ([]*models.
 }
 
 // GetCreditAnalytics получает аналитику по кредитам пользователя
-func (r *CreditRepositoryImpl) GetCreditAnalytics(ctx context.Context, userID int) (*models.CreditAnalytics, error) {
+func (r *CreditRepositoryImpl) GetCreditAnalytics(ctx context.Context, userID int) (*domain.CreditAnalytics, error) {
 	query := `
 		SELECT
 			COUNT(*) as total_credits,
@@ -274,7 +274,7 @@ func (r *CreditRepositoryImpl) GetCreditAnalytics(ctx context.Context, userID in
 		FROM credits
 		WHERE user_id = $1 AND status IN ('active', 'overdue')`
 
-	analytics := &models.CreditAnalytics{}
+	analytics := &domain.CreditAnalytics{}
 	err := r.db.QueryRow(ctx, query, userID).Scan(
 		&analytics.TotalCredits,
 		&analytics.TotalDebt,
@@ -300,7 +300,7 @@ func NewPaymentScheduleRepository(db *pgxpool.Pool) PaymentScheduleRepository {
 }
 
 // Create создает новый платеж
-func (r *PaymentScheduleRepositoryImpl) Create(ctx context.Context, payment *models.PaymentSchedule) error {
+func (r *PaymentScheduleRepositoryImpl) Create(ctx context.Context, payment *domain.PaymentSchedule) error {
 	query := `
 		INSERT INTO payment_schedules (credit_id, payment_number, due_date, payment_amount, principal_amount, interest_amount, remaining_balance, status, penalty_amount, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -328,7 +328,7 @@ func (r *PaymentScheduleRepositoryImpl) Create(ctx context.Context, payment *mod
 }
 
 // CreateBatch создает несколько платежей одновременно
-func (r *PaymentScheduleRepositoryImpl) CreateBatch(ctx context.Context, payments []*models.PaymentSchedule) error {
+func (r *PaymentScheduleRepositoryImpl) CreateBatch(ctx context.Context, payments []*domain.PaymentSchedule) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -366,13 +366,13 @@ func (r *PaymentScheduleRepositoryImpl) CreateBatch(ctx context.Context, payment
 }
 
 // GetByID получает платеж по ID
-func (r *PaymentScheduleRepositoryImpl) GetByID(ctx context.Context, id int) (*models.PaymentSchedule, error) {
+func (r *PaymentScheduleRepositoryImpl) GetByID(ctx context.Context, id int) (*domain.PaymentSchedule, error) {
 	query := `
 		SELECT id, credit_id, payment_number, due_date, payment_amount, principal_amount, interest_amount, remaining_balance, status, paid_date, penalty_amount, created_at, updated_at
 		FROM payment_schedules
 		WHERE id = $1`
 
-	payment := &models.PaymentSchedule{}
+	payment := &domain.PaymentSchedule{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&payment.ID,
 		&payment.CreditID,
@@ -400,10 +400,10 @@ func (r *PaymentScheduleRepositoryImpl) GetByID(ctx context.Context, id int) (*m
 }
 
 // scanPaymentSchedules сканирует результаты запроса в слайс PaymentSchedule
-func (r *PaymentScheduleRepositoryImpl) scanPaymentSchedules(rows pgx.Rows) ([]*models.PaymentSchedule, error) {
-	var payments []*models.PaymentSchedule
+func (r *PaymentScheduleRepositoryImpl) scanPaymentSchedules(rows pgx.Rows) ([]*domain.PaymentSchedule, error) {
+	var payments []*domain.PaymentSchedule
 	for rows.Next() {
-		payment := &models.PaymentSchedule{}
+		payment := &domain.PaymentSchedule{}
 		err := rows.Scan(
 			&payment.ID,
 			&payment.CreditID,
@@ -429,7 +429,7 @@ func (r *PaymentScheduleRepositoryImpl) scanPaymentSchedules(rows pgx.Rows) ([]*
 }
 
 // GetByCreditID получает все платежи по кредиту
-func (r *PaymentScheduleRepositoryImpl) GetByCreditID(ctx context.Context, creditID int) ([]*models.PaymentSchedule, error) {
+func (r *PaymentScheduleRepositoryImpl) GetByCreditID(ctx context.Context, creditID int) ([]*domain.PaymentSchedule, error) {
 	query := `
 		SELECT id, credit_id, payment_number, due_date, payment_amount, principal_amount, interest_amount, remaining_balance, status, paid_date, penalty_amount, created_at, updated_at
 		FROM payment_schedules
@@ -446,7 +446,7 @@ func (r *PaymentScheduleRepositoryImpl) GetByCreditID(ctx context.Context, credi
 }
 
 // Update обновляет платеж
-func (r *PaymentScheduleRepositoryImpl) Update(ctx context.Context, payment *models.PaymentSchedule) error {
+func (r *PaymentScheduleRepositoryImpl) Update(ctx context.Context, payment *domain.PaymentSchedule) error {
 	query := `
 		UPDATE payment_schedules
 		SET payment_amount = $2, principal_amount = $3, interest_amount = $4, remaining_balance = $5, status = $6, paid_date = $7, penalty_amount = $8, updated_at = $9
@@ -494,7 +494,7 @@ func (r *PaymentScheduleRepositoryImpl) Delete(ctx context.Context, id int) erro
 }
 
 // GetOverduePayments получает просроченные платежи
-func (r *PaymentScheduleRepositoryImpl) GetOverduePayments(ctx context.Context) ([]*models.PaymentSchedule, error) {
+func (r *PaymentScheduleRepositoryImpl) GetOverduePayments(ctx context.Context) ([]*domain.PaymentSchedule, error) {
 	query := `
 		SELECT ps.id, ps.credit_id, ps.payment_number, ps.due_date, ps.payment_amount, ps.principal_amount, ps.interest_amount, ps.remaining_balance, ps.status, ps.paid_date, ps.penalty_amount, ps.created_at, ps.updated_at
 		FROM payment_schedules ps
@@ -514,7 +514,7 @@ func (r *PaymentScheduleRepositoryImpl) GetOverduePayments(ctx context.Context) 
 }
 
 // GetUpcomingPayments получает предстоящие платежи в ближайшие дни
-func (r *PaymentScheduleRepositoryImpl) GetUpcomingPayments(ctx context.Context, days int) ([]*models.PaymentSchedule, error) {
+func (r *PaymentScheduleRepositoryImpl) GetUpcomingPayments(ctx context.Context, days int) ([]*domain.PaymentSchedule, error) {
 	query := `
 		SELECT ps.id, ps.credit_id, ps.payment_number, ps.due_date, ps.payment_amount, ps.principal_amount, ps.interest_amount, ps.remaining_balance, ps.status, ps.paid_date, ps.penalty_amount, ps.created_at, ps.updated_at
 		FROM payment_schedules ps

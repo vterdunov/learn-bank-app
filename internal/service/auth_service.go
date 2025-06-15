@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 	"github.com/vterdunov/learn-bank-app/internal/repository"
 	"github.com/vterdunov/learn-bank-app/internal/utils"
 )
@@ -34,7 +34,7 @@ func NewAuthService(userRepo repository.UserRepository, logger *slog.Logger) Aut
 }
 
 // Register регистрирует нового пользователя
-func (s *authService) Register(ctx context.Context, req RegisterRequest) (*models.User, error) {
+func (s *authService) Register(ctx context.Context, req RegisterRequest) (*domain.User, error) {
 	// Валидация входных данных
 	if err := utils.ValidateEmail(req.Email); err != nil {
 		s.logger.Warn("Invalid email format", "email", req.Email, "error", err)
@@ -73,7 +73,7 @@ func (s *authService) Register(ctx context.Context, req RegisterRequest) (*model
 	}
 
 	// Создание пользователя
-	user := &models.User{
+	user := &domain.User{
 		Username:     req.Username,
 		Email:        req.Email,
 		PasswordHash: hashedPassword,
@@ -126,7 +126,7 @@ func (s *authService) Login(ctx context.Context, req LoginRequest) (string, erro
 }
 
 // ValidateToken проверяет валидность JWT токена и возвращает пользователя
-func (s *authService) ValidateToken(ctx context.Context, token string) (*models.User, error) {
+func (s *authService) ValidateToken(ctx context.Context, token string) (*domain.User, error) {
 	// Валидация JWT токена
 	userIDStr, err := utils.ValidateJWT(token)
 	if err != nil {

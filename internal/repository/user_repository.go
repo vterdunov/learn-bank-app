@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 	"github.com/vterdunov/learn-bank-app/internal/utils"
 )
 
@@ -21,7 +21,7 @@ func NewUserRepository(db *pgxpool.Pool) UserRepository {
 }
 
 // Create создает нового пользователя
-func (r *UserRepositoryImpl) Create(ctx context.Context, user *models.User) error {
+func (r *UserRepositoryImpl) Create(ctx context.Context, user *domain.User) error {
 	query := `
 		INSERT INTO users (username, email, password_hash, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5)
@@ -47,13 +47,13 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, user *models.User) erro
 }
 
 // GetByID получает пользователя по ID
-func (r *UserRepositoryImpl) GetByID(ctx context.Context, id int) (*models.User, error) {
+func (r *UserRepositoryImpl) GetByID(ctx context.Context, id int) (*domain.User, error) {
 	query := `
 		SELECT id, username, email, password_hash, created_at, updated_at
 		FROM users
 		WHERE id = $1`
 
-	user := &models.User{}
+	user := &domain.User{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&user.ID,
 		&user.Username,
@@ -74,13 +74,13 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id int) (*models.User,
 }
 
 // GetByEmail получает пользователя по email
-func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*models.User, error) {
+func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	query := `
 		SELECT id, username, email, password_hash, created_at, updated_at
 		FROM users
 		WHERE email = $1`
 
-	user := &models.User{}
+	user := &domain.User{}
 	err := r.db.QueryRow(ctx, query, email).Scan(
 		&user.ID,
 		&user.Username,
@@ -101,13 +101,13 @@ func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*mod
 }
 
 // GetByUsername получает пользователя по username
-func (r *UserRepositoryImpl) GetByUsername(ctx context.Context, username string) (*models.User, error) {
+func (r *UserRepositoryImpl) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
 	query := `
 		SELECT id, username, email, password_hash, created_at, updated_at
 		FROM users
 		WHERE username = $1`
 
-	user := &models.User{}
+	user := &domain.User{}
 	err := r.db.QueryRow(ctx, query, username).Scan(
 		&user.ID,
 		&user.Username,
@@ -128,7 +128,7 @@ func (r *UserRepositoryImpl) GetByUsername(ctx context.Context, username string)
 }
 
 // Update обновляет данные пользователя
-func (r *UserRepositoryImpl) Update(ctx context.Context, user *models.User) error {
+func (r *UserRepositoryImpl) Update(ctx context.Context, user *domain.User) error {
 	query := `
 		UPDATE users
 		SET username = $2, email = $3, password_hash = $4, updated_at = $5

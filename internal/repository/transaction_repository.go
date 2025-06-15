@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 )
 
 // TransactionRepositoryImpl реализация TransactionRepository
@@ -22,7 +22,7 @@ func NewTransactionRepository(db *pgxpool.Pool) TransactionRepository {
 }
 
 // Create создает новую транзакцию
-func (r *TransactionRepositoryImpl) Create(ctx context.Context, transaction *models.Transaction) error {
+func (r *TransactionRepositoryImpl) Create(ctx context.Context, transaction *domain.Transaction) error {
 	query := `
 		INSERT INTO transactions (from_account, to_account, amount, type, status, description, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -47,13 +47,13 @@ func (r *TransactionRepositoryImpl) Create(ctx context.Context, transaction *mod
 }
 
 // GetByID получает транзакцию по ID
-func (r *TransactionRepositoryImpl) GetByID(ctx context.Context, id int) (*models.Transaction, error) {
+func (r *TransactionRepositoryImpl) GetByID(ctx context.Context, id int) (*domain.Transaction, error) {
 	query := `
 		SELECT id, from_account, to_account, amount, type, status, description, created_at, updated_at
 		FROM transactions
 		WHERE id = $1`
 
-	transaction := &models.Transaction{}
+	transaction := &domain.Transaction{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&transaction.ID,
 		&transaction.FromAccount,
@@ -77,7 +77,7 @@ func (r *TransactionRepositoryImpl) GetByID(ctx context.Context, id int) (*model
 }
 
 // GetByAccountID получает транзакции по ID счета с пагинацией
-func (r *TransactionRepositoryImpl) GetByAccountID(ctx context.Context, accountID int, limit, offset int) ([]*models.Transaction, error) {
+func (r *TransactionRepositoryImpl) GetByAccountID(ctx context.Context, accountID int, limit, offset int) ([]*domain.Transaction, error) {
 	query := `
 		SELECT id, from_account, to_account, amount, type, status, description, created_at, updated_at
 		FROM transactions
@@ -91,9 +91,9 @@ func (r *TransactionRepositoryImpl) GetByAccountID(ctx context.Context, accountI
 	}
 	defer rows.Close()
 
-	var transactions []*models.Transaction
+	var transactions []*domain.Transaction
 	for rows.Next() {
-		transaction := &models.Transaction{}
+		transaction := &domain.Transaction{}
 		err := rows.Scan(
 			&transaction.ID,
 			&transaction.FromAccount,
@@ -115,7 +115,7 @@ func (r *TransactionRepositoryImpl) GetByAccountID(ctx context.Context, accountI
 }
 
 // GetByUserID получает транзакции пользователя с пагинацией
-func (r *TransactionRepositoryImpl) GetByUserID(ctx context.Context, userID int, limit, offset int) ([]*models.Transaction, error) {
+func (r *TransactionRepositoryImpl) GetByUserID(ctx context.Context, userID int, limit, offset int) ([]*domain.Transaction, error) {
 	query := `
 		SELECT t.id, t.from_account, t.to_account, t.amount, t.type, t.status, t.description, t.created_at, t.updated_at
 		FROM transactions t
@@ -131,9 +131,9 @@ func (r *TransactionRepositoryImpl) GetByUserID(ctx context.Context, userID int,
 	}
 	defer rows.Close()
 
-	var transactions []*models.Transaction
+	var transactions []*domain.Transaction
 	for rows.Next() {
-		transaction := &models.Transaction{}
+		transaction := &domain.Transaction{}
 		err := rows.Scan(
 			&transaction.ID,
 			&transaction.FromAccount,
@@ -155,7 +155,7 @@ func (r *TransactionRepositoryImpl) GetByUserID(ctx context.Context, userID int,
 }
 
 // Update обновляет транзакцию
-func (r *TransactionRepositoryImpl) Update(ctx context.Context, transaction *models.Transaction) error {
+func (r *TransactionRepositoryImpl) Update(ctx context.Context, transaction *domain.Transaction) error {
 	query := `
 		UPDATE transactions
 		SET amount = $2, type = $3, status = $4, description = $5, updated_at = $6
@@ -200,7 +200,7 @@ func (r *TransactionRepositoryImpl) Delete(ctx context.Context, id int) error {
 }
 
 // GetTransactionsByDateRange получает транзакции за период
-func (r *TransactionRepositoryImpl) GetTransactionsByDateRange(ctx context.Context, accountID int, startDate, endDate time.Time) ([]*models.Transaction, error) {
+func (r *TransactionRepositoryImpl) GetTransactionsByDateRange(ctx context.Context, accountID int, startDate, endDate time.Time) ([]*domain.Transaction, error) {
 	query := `
 		SELECT id, from_account, to_account, amount, type, status, description, created_at, updated_at
 		FROM transactions
@@ -214,9 +214,9 @@ func (r *TransactionRepositoryImpl) GetTransactionsByDateRange(ctx context.Conte
 	}
 	defer rows.Close()
 
-	var transactions []*models.Transaction
+	var transactions []*domain.Transaction
 	for rows.Next() {
-		transaction := &models.Transaction{}
+		transaction := &domain.Transaction{}
 		err := rows.Scan(
 			&transaction.ID,
 			&transaction.FromAccount,
@@ -238,7 +238,7 @@ func (r *TransactionRepositoryImpl) GetTransactionsByDateRange(ctx context.Conte
 }
 
 // GetMonthlyStatistics получает месячную статистику транзакций
-func (r *TransactionRepositoryImpl) GetMonthlyStatistics(ctx context.Context, userID int, year int, month int) (*models.MonthlyStatistics, error) {
+func (r *TransactionRepositoryImpl) GetMonthlyStatistics(ctx context.Context, userID int, year int, month int) (*domain.MonthlyStatistics, error) {
 	query := `
 		SELECT
 			COALESCE(SUM(CASE
@@ -259,7 +259,7 @@ func (r *TransactionRepositoryImpl) GetMonthlyStatistics(ctx context.Context, us
 		  AND EXTRACT(MONTH FROM t.created_at) = $3
 		  AND t.status = 'completed'`
 
-	stats := &models.MonthlyStatistics{
+	stats := &domain.MonthlyStatistics{
 		Year:  year,
 		Month: month,
 	}

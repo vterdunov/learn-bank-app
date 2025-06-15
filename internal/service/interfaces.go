@@ -4,20 +4,20 @@ import (
 	"context"
 	"time"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 )
 
 // AuthService определяет интерфейс сервиса аутентификации
 type AuthService interface {
-	Register(ctx context.Context, req RegisterRequest) (*models.User, error)
+	Register(ctx context.Context, req RegisterRequest) (*domain.User, error)
 	Login(ctx context.Context, req LoginRequest) (string, error)
-	ValidateToken(ctx context.Context, token string) (*models.User, error)
+	ValidateToken(ctx context.Context, token string) (*domain.User, error)
 }
 
 // AccountService определяет интерфейс сервиса управления счетами
 type AccountService interface {
-	CreateAccount(ctx context.Context, userID int, req CreateAccountRequest) (*models.Account, error)
-	GetUserAccounts(ctx context.Context, userID int) ([]*models.Account, error)
+	CreateAccount(ctx context.Context, userID int, req CreateAccountRequest) (*domain.Account, error)
+	GetUserAccounts(ctx context.Context, userID int) ([]*domain.Account, error)
 	DepositMoney(ctx context.Context, accountID int, amount float64) error
 	WithdrawMoney(ctx context.Context, accountID int, amount float64) error
 	TransferMoney(ctx context.Context, fromAccountID, toAccountID int, amount float64) error
@@ -25,16 +25,16 @@ type AccountService interface {
 
 // CardService определяет интерфейс сервиса управления картами
 type CardService interface {
-	CreateCard(ctx context.Context, accountID int) (*models.Card, error)
-	GetAccountCards(ctx context.Context, accountID int) ([]*models.Card, error)
-	DecryptCardData(ctx context.Context, card *models.Card) (*CardData, error)
+	CreateCard(ctx context.Context, accountID int) (*domain.Card, error)
+	GetAccountCards(ctx context.Context, accountID int) ([]*domain.Card, error)
+	DecryptCardData(ctx context.Context, card *domain.Card) (*CardData, error)
 	ProcessPayment(ctx context.Context, cardID int, amount float64) error
 }
 
 // CreditService определяет интерфейс сервиса кредитования
 type CreditService interface {
-	CreateCredit(ctx context.Context, req CreateCreditRequest) (*models.Credit, error)
-	GetCreditSchedule(ctx context.Context, creditID int) ([]*models.PaymentSchedule, error)
+	CreateCredit(ctx context.Context, req domain.CreateCreditRequest) (*domain.Credit, error)
+	GetCreditSchedule(ctx context.Context, creditID int) ([]*domain.PaymentSchedule, error)
 	CalculateAnnuityPayment(principal, rate float64, months int) float64
 	ProcessOverduePayments(ctx context.Context) error
 }
@@ -49,8 +49,8 @@ type AnalyticsService interface {
 // EmailService определяет интерфейс сервиса отправки email
 type EmailService interface {
 	SendPaymentNotification(userEmail string, amount float64) error
-	SendCreditNotification(userEmail string, credit *models.Credit) error
-	SendOverdueNotification(userEmail string, payment *models.PaymentSchedule) error
+	SendCreditNotification(userEmail string, credit *domain.Credit) error
+	SendOverdueNotification(userEmail string, payment *domain.PaymentSchedule) error
 }
 
 // CBRService определяет интерфейс сервиса интеграции с ЦБ РФ
@@ -76,13 +76,6 @@ type LoginRequest struct {
 // CreateAccountRequest структура запроса создания счета
 type CreateAccountRequest struct {
 	Currency string `json:"currency"`
-}
-
-// CreateCreditRequest структура запроса кредита
-type CreateCreditRequest struct {
-	AccountID int     `json:"account_id"`
-	Amount    float64 `json:"amount"`
-	Months    int     `json:"months"`
 }
 
 // CardData структура расшифрованных данных карты

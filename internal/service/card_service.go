@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 	"github.com/vterdunov/learn-bank-app/internal/repository"
 	"github.com/vterdunov/learn-bank-app/internal/utils"
 )
@@ -54,7 +54,7 @@ func NewCardService(
 }
 
 // CreateCard создает новую банковскую карту
-func (s *cardService) CreateCard(ctx context.Context, accountID int) (*models.Card, error) {
+func (s *cardService) CreateCard(ctx context.Context, accountID int) (*domain.Card, error) {
 	// Проверяем существование счета
 	account, err := s.accountRepo.GetByID(ctx, accountID)
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *cardService) CreateCard(ctx context.Context, accountID int) (*models.Ca
 	hmacStr := fmt.Sprintf("%x:%s", encryptedExpiry.Data, encryptedExpiry.HMAC)
 
 	// Создаем карту
-	card := &models.Card{
+	card := &domain.Card{
 		AccountID:     accountID,
 		EncryptedData: encryptedDataStr,
 		HMAC:          hmacStr,
@@ -136,7 +136,7 @@ func (s *cardService) CreateCard(ctx context.Context, accountID int) (*models.Ca
 }
 
 // GetAccountCards возвращает все карты счета
-func (s *cardService) GetAccountCards(ctx context.Context, accountID int) ([]*models.Card, error) {
+func (s *cardService) GetAccountCards(ctx context.Context, accountID int) ([]*domain.Card, error) {
 	cards, err := s.cardRepo.GetByAccountID(ctx, accountID)
 	if err != nil {
 		s.logger.Error("Failed to get account cards", "account_id", accountID, "error", err)
@@ -148,7 +148,7 @@ func (s *cardService) GetAccountCards(ctx context.Context, accountID int) ([]*mo
 }
 
 // DecryptCardData расшифровывает данные карты
-func (s *cardService) DecryptCardData(ctx context.Context, card *models.Card) (*CardData, error) {
+func (s *cardService) DecryptCardData(ctx context.Context, card *domain.Card) (*CardData, error) {
 	// Парсим зашифрованные данные номера карты
 	numberParts := strings.Split(card.EncryptedData, ":")
 	if len(numberParts) != 2 {
@@ -254,7 +254,7 @@ func (s *cardService) ProcessPayment(ctx context.Context, cardID int, amount flo
 	}
 
 	// Создаем запись о транзакции
-	transaction := &models.Transaction{
+	transaction := &domain.Transaction{
 		FromAccount: &card.AccountID,
 		ToAccount:   nil, // Платеж во внешнюю систему
 		Amount:      amount,

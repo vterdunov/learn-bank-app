@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 	"github.com/vterdunov/learn-bank-app/internal/repository"
 )
 
@@ -41,7 +41,7 @@ func NewAccountService(
 }
 
 // CreateAccount создает новый банковский счет
-func (s *accountService) CreateAccount(ctx context.Context, userID int, req CreateAccountRequest) (*models.Account, error) {
+func (s *accountService) CreateAccount(ctx context.Context, userID int, req CreateAccountRequest) (*domain.Account, error) {
 	// Валидация валюты
 	if req.Currency == "" {
 		req.Currency = "RUB" // По умолчанию рубли
@@ -56,7 +56,7 @@ func (s *accountService) CreateAccount(ctx context.Context, userID int, req Crea
 	accountNumber := s.generateAccountNumber()
 
 	// Создание счета
-	account := &models.Account{
+	account := &domain.Account{
 		UserID:    userID,
 		Number:    accountNumber,
 		Balance:   0.0,
@@ -81,7 +81,7 @@ func (s *accountService) CreateAccount(ctx context.Context, userID int, req Crea
 }
 
 // GetUserAccounts возвращает все счета пользователя
-func (s *accountService) GetUserAccounts(ctx context.Context, userID int) ([]*models.Account, error) {
+func (s *accountService) GetUserAccounts(ctx context.Context, userID int) ([]*domain.Account, error) {
 	accounts, err := s.accountRepo.GetByUserID(ctx, userID)
 	if err != nil {
 		s.logger.Error("Failed to get user accounts", "user_id", userID, "error", err)
@@ -121,7 +121,7 @@ func (s *accountService) DepositMoney(ctx context.Context, accountID int, amount
 	}
 
 	// Создание записи о транзакции
-	transaction := &models.Transaction{
+	transaction := &domain.Transaction{
 		FromAccount: nil, // Пополнение извне
 		ToAccount:   &accountID,
 		Amount:      amount,
@@ -183,7 +183,7 @@ func (s *accountService) WithdrawMoney(ctx context.Context, accountID int, amoun
 	}
 
 	// Создание записи о транзакции
-	transaction := &models.Transaction{
+	transaction := &domain.Transaction{
 		FromAccount: &accountID,
 		ToAccount:   nil, // Списание во внешнюю систему
 		Amount:      amount,
@@ -235,7 +235,7 @@ func (s *accountService) TransferMoney(ctx context.Context, fromAccountID, toAcc
 	}
 
 	// Создание записи о транзакции
-	transaction := &models.Transaction{
+	transaction := &domain.Transaction{
 		FromAccount: &fromAccountID,
 		ToAccount:   &toAccountID,
 		Amount:      amount,

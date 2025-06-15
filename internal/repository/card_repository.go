@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/vterdunov/learn-bank-app/internal/models"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
 )
 
 // CardRepositoryImpl реализация CardRepository
@@ -22,7 +22,7 @@ func NewCardRepository(db *pgxpool.Pool) CardRepository {
 }
 
 // Create создает новую карту
-func (r *CardRepositoryImpl) Create(ctx context.Context, card *models.Card) error {
+func (r *CardRepositoryImpl) Create(ctx context.Context, card *domain.Card) error {
 	query := `
 		INSERT INTO cards (account_id, encrypted_data, hmac, cvv_hash, expiry_date, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -47,13 +47,13 @@ func (r *CardRepositoryImpl) Create(ctx context.Context, card *models.Card) erro
 }
 
 // GetByID получает карту по ID
-func (r *CardRepositoryImpl) GetByID(ctx context.Context, id int) (*models.Card, error) {
+func (r *CardRepositoryImpl) GetByID(ctx context.Context, id int) (*domain.Card, error) {
 	query := `
 		SELECT id, account_id, encrypted_data, hmac, cvv_hash, expiry_date, status, created_at, updated_at
 		FROM cards
 		WHERE id = $1`
 
-	card := &models.Card{}
+	card := &domain.Card{}
 	err := r.db.QueryRow(ctx, query, id).Scan(
 		&card.ID,
 		&card.AccountID,
@@ -77,7 +77,7 @@ func (r *CardRepositoryImpl) GetByID(ctx context.Context, id int) (*models.Card,
 }
 
 // GetByAccountID получает все карты счета
-func (r *CardRepositoryImpl) GetByAccountID(ctx context.Context, accountID int) ([]*models.Card, error) {
+func (r *CardRepositoryImpl) GetByAccountID(ctx context.Context, accountID int) ([]*domain.Card, error) {
 	query := `
 		SELECT id, account_id, encrypted_data, hmac, cvv_hash, expiry_date, status, created_at, updated_at
 		FROM cards
@@ -90,9 +90,9 @@ func (r *CardRepositoryImpl) GetByAccountID(ctx context.Context, accountID int) 
 	}
 	defer rows.Close()
 
-	var cards []*models.Card
+	var cards []*domain.Card
 	for rows.Next() {
-		card := &models.Card{}
+		card := &domain.Card{}
 		err := rows.Scan(
 			&card.ID,
 			&card.AccountID,
@@ -114,7 +114,7 @@ func (r *CardRepositoryImpl) GetByAccountID(ctx context.Context, accountID int) 
 }
 
 // Update обновляет данные карты
-func (r *CardRepositoryImpl) Update(ctx context.Context, card *models.Card) error {
+func (r *CardRepositoryImpl) Update(ctx context.Context, card *domain.Card) error {
 	query := `
 		UPDATE cards
 		SET encrypted_data = $2, hmac = $3, cvv_hash = $4, expiry_date = $5, status = $6, updated_at = $7
@@ -179,7 +179,7 @@ func (r *CardRepositoryImpl) UpdateStatus(ctx context.Context, id int, status st
 }
 
 // GetActiveCardsByAccount получает активные карты счета
-func (r *CardRepositoryImpl) GetActiveCardsByAccount(ctx context.Context, accountID int) ([]*models.Card, error) {
+func (r *CardRepositoryImpl) GetActiveCardsByAccount(ctx context.Context, accountID int) ([]*domain.Card, error) {
 	query := `
 		SELECT id, account_id, encrypted_data, hmac, cvv_hash, expiry_date, status, created_at, updated_at
 		FROM cards
@@ -192,9 +192,9 @@ func (r *CardRepositoryImpl) GetActiveCardsByAccount(ctx context.Context, accoun
 	}
 	defer rows.Close()
 
-	var cards []*models.Card
+	var cards []*domain.Card
 	for rows.Next() {
-		card := &models.Card{}
+		card := &domain.Card{}
 		err := rows.Scan(
 			&card.ID,
 			&card.AccountID,
