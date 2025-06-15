@@ -88,15 +88,9 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Получение userID из контекста (устанавливается middleware)
-	userIDStr := r.Context().Value("userID")
-	if userIDStr == nil {
-		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
-		return
-	}
-
-	userID, err := strconv.Atoi(userIDStr.(string))
+	userID, err := GetUserIDFromRequest(r)
 	if err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		WriteErrorResponse(w, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -125,15 +119,9 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 // GetUserAccounts получает все счета пользователя
 func (h *AccountHandler) GetUserAccounts(w http.ResponseWriter, r *http.Request) {
 	// Получение userID из контекста
-	userIDStr := r.Context().Value("userID")
-	if userIDStr == nil {
-		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
-		return
-	}
-
-	userID, err := strconv.Atoi(userIDStr.(string))
+	userID, err := GetUserIDFromRequest(r)
 	if err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		WriteErrorResponse(w, http.StatusUnauthorized, err)
 		return
 	}
 

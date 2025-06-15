@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,15 +11,19 @@ import (
 
 	"github.com/vterdunov/learn-bank-app/internal/config"
 	"github.com/vterdunov/learn-bank-app/internal/database"
+	"github.com/vterdunov/learn-bank-app/internal/domain"
+	"github.com/vterdunov/learn-bank-app/internal/repository"
+	"github.com/vterdunov/learn-bank-app/internal/router"
+	"github.com/vterdunov/learn-bank-app/internal/service"
 	"github.com/vterdunov/learn-bank-app/internal/utils"
 )
 
 func main() {
 	// Настройка логирования
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	lg := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
-	slog.SetDefault(logger)
+	slog.SetDefault(lg)
 
 	// Загрузка конфигурации
 	cfg, err := config.Load()
@@ -59,19 +62,46 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Инициализация репозиториев
+	userRepo := repository.NewUserRepository(db.Pool)
+	accountRepo := repository.NewAccountRepository(db.Pool)
+	cardRepo := repository.NewCardRepository(db.Pool)
+	transactionRepo := repository.NewTransactionRepository(db.Pool)
+	creditRepo := repository.NewCreditRepository(db.Pool)
+	paymentScheduleRepo := repository.NewPaymentScheduleRepository(db.Pool)
+
+	// Инициализация внешних сервисов
+	cbrService := service.NewCBRService(cfg, lg)
+
+	// Инициализация access control
+	accessControl := domain.NewAccessControlDomain(accountRepo, cardRepo, creditRepo)
+
+	// Инициализация основных сервисов
+	authService := service.NewAuthService(userRepo, lg)
+	accountService := service.NewAccountService(accountRepo, transactionRepo, accessControl, lg)
+	cardService := service.NewCardService(cardRepo, accountRepo, transactionRepo, lg)
+	creditService := service.NewCreditService(creditRepo, paymentScheduleRepo, accountRepo, transactionRepo, cbrService, lg)
+	analyticsService := service.NewAnalyticsService(accountRepo, transactionRepo, creditRepo)
+
+	// Инициализация роутера со всеми сервисами
+	routerConfig := router.Config{
+		Logger:    lg,
+		JWTSecret: cfg.JWT.Secret,
+		Services: &router.Services{
+			Auth:      authService,
+			Account:   accountService,
+			Card:      cardService,
+			Credit:    creditService,
+			Analytics: analyticsService,
+		},
+	}
+
+	appRouter := router.New(routerConfig)
+
 	// Настройка HTTP сервера
-	mux := http.NewServeMux()
-
-	// Простой health check эндпоинт
-	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `{"status":"healthy"}`)
-	})
-
 	server := &http.Server{
 		Addr:         cfg.Server.Host + ":" + cfg.Server.Port,
-		Handler:      mux,
+		Handler:      appRouter.Handler(),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,

@@ -131,7 +131,7 @@ func (s *authService) Login(ctx context.Context, req LoginRequest) (string, erro
 	}
 
 	// Проверка пароля
-	if err := utils.VerifyPassword(req.Password, user.PasswordHash); err != nil {
+	if err := utils.VerifyPassword(user.PasswordHash, req.Password); err != nil {
 		logger.LogSecurityEvent(s.logger, "login_attempt_invalid_password", "high", map[string]interface{}{
 			"email":   req.Email,
 			"user_id": user.ID,

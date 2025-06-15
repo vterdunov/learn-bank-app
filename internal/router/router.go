@@ -11,9 +11,10 @@ import (
 
 // Router содержит все маршруты приложения
 type Router struct {
-	mux      *http.ServeMux
-	logger   *slog.Logger
-	handlers *Handlers
+	mux       *http.ServeMux
+	logger    *slog.Logger
+	handlers  *Handlers
+	jwtSecret string
 }
 
 // Handlers содержит все обработчики
@@ -27,8 +28,9 @@ type Handlers struct {
 
 // Config содержит конфигурацию для роутера
 type Config struct {
-	Logger   *slog.Logger
-	Services *Services
+	Logger    *slog.Logger
+	Services  *Services
+	JWTSecret string
 }
 
 // Services содержит все сервисы
@@ -42,8 +44,8 @@ type Services struct {
 
 // New создает новый роутер
 func New(config Config) *Router {
-	// Создаем обработчики
-	handlers := &Handlers{
+	// Создаем все обработчики
+	h := &Handlers{
 		Auth:      handlers.NewAuthHandler(config.Services.Auth, config.Logger),
 		Account:   handlers.NewAccountHandler(config.Services.Account, config.Logger),
 		Card:      handlers.NewCardHandler(config.Services.Card, config.Logger),
@@ -52,9 +54,10 @@ func New(config Config) *Router {
 	}
 
 	router := &Router{
-		mux:      http.NewServeMux(),
-		logger:   config.Logger,
-		handlers: handlers,
+		mux:       http.NewServeMux(),
+		logger:    config.Logger,
+		handlers:  h,
+		jwtSecret: config.JWTSecret,
 	}
 
 	router.setupRoutes()
@@ -77,7 +80,7 @@ func (r *Router) setupRoutes() {
 	authMiddleware := middleware.Chain(
 		middleware.LoggingMiddleware(),
 		middleware.RequestIDMiddleware(),
-		middleware.AuthMiddleware("jwt-secret"), // TODO: get from config
+		middleware.AuthMiddleware(r.jwtSecret),
 	)
 
 	// Account endpoints
