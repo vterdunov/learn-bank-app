@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/go-mail/mail/v2 v2.3.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
@@ -19,4 +20,5 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
+	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 )
