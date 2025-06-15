@@ -184,8 +184,15 @@ func (h *AccountHandler) Deposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Пополнение счета
-	if err := h.accountService.DepositMoney(context.Background(), accountID, req.Amount); err != nil {
+	// Получение userID из контекста
+	userID, err := GetUserIDFromRequest(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	// Пополнение счета (проверка прав доступа встроена в сервис)
+	if err := h.accountService.DepositMoney(r.Context(), userID, accountID, req.Amount); err != nil {
 		h.logger.Error("Failed to deposit money", "account_id", accountID, "amount", req.Amount, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
 		return
@@ -226,8 +233,15 @@ func (h *AccountHandler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Списание средств
-	if err := h.accountService.WithdrawMoney(context.Background(), accountID, req.Amount); err != nil {
+	// Получение userID из контекста
+	userID, err := GetUserIDFromRequest(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	// Списание средств (проверка прав доступа встроена в сервис)
+	if err := h.accountService.WithdrawMoney(r.Context(), userID, accountID, req.Amount); err != nil {
 		h.logger.Error("Failed to withdraw money", "account_id", accountID, "amount", req.Amount, "error", err.Error())
 
 		// Определяем статус код на основе ошибки
@@ -275,8 +289,15 @@ func (h *AccountHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Выполнение перевода
-	if err := h.accountService.TransferMoney(context.Background(), fromAccountID, toAccountID, req.Amount); err != nil {
+	// Получение userID из контекста
+	userID, err := GetUserIDFromRequest(r)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, err)
+		return
+	}
+
+	// Выполнение перевода (проверка прав доступа встроена в сервис)
+	if err := h.accountService.TransferMoney(r.Context(), userID, fromAccountID, toAccountID, req.Amount); err != nil {
 		h.logger.Error("Failed to transfer money",
 			"from_account_id", fromAccountID,
 			"to_account_id", toAccountID,

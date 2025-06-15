@@ -18,23 +18,23 @@ type AuthService interface {
 type AccountService interface {
 	CreateAccount(ctx context.Context, userID int, req CreateAccountRequest) (*domain.Account, error)
 	GetUserAccounts(ctx context.Context, userID int) ([]*domain.Account, error)
-	DepositMoney(ctx context.Context, accountID int, amount float64) error
-	WithdrawMoney(ctx context.Context, accountID int, amount float64) error
-	TransferMoney(ctx context.Context, fromAccountID, toAccountID int, amount float64) error
+	DepositMoney(ctx context.Context, userID, accountID int, amount float64) error
+	WithdrawMoney(ctx context.Context, userID, accountID int, amount float64) error
+	TransferMoney(ctx context.Context, userID, fromAccountID, toAccountID int, amount float64) error
 }
 
 // CardService определяет интерфейс сервиса управления картами
 type CardService interface {
-	CreateCard(ctx context.Context, accountID int) (*domain.Card, error)
-	GetAccountCards(ctx context.Context, accountID int) ([]*domain.Card, error)
-	DecryptCardData(ctx context.Context, card *domain.Card) (*CardData, error)
-	ProcessPayment(ctx context.Context, cardID int, amount float64) error
+	CreateCard(ctx context.Context, userID, accountID int) (*domain.Card, error)
+	GetAccountCards(ctx context.Context, userID, accountID int) ([]*domain.Card, error)
+	DecryptCardData(ctx context.Context, userID int, card *domain.Card) (*CardData, error)
+	ProcessPayment(ctx context.Context, userID, cardID int, amount float64) error
 }
 
 // CreditService определяет интерфейс сервиса кредитования
 type CreditService interface {
-	CreateCredit(ctx context.Context, req domain.CreateCreditRequest) (*domain.Credit, error)
-	GetCreditSchedule(ctx context.Context, creditID int) ([]*domain.PaymentSchedule, error)
+	CreateCredit(ctx context.Context, userID int, req domain.CreateCreditRequest) (*domain.Credit, error)
+	GetCreditSchedule(ctx context.Context, userID, creditID int) ([]*domain.PaymentSchedule, error)
 	CalculateAnnuityPayment(principal, rate float64, months int) float64
 	ProcessOverduePayments(ctx context.Context) error
 }
@@ -43,7 +43,7 @@ type CreditService interface {
 type AnalyticsService interface {
 	GetMonthlyStatistics(ctx context.Context, userID int, month time.Time) (*MonthlyStats, error)
 	GetCreditLoad(ctx context.Context, userID int) (*CreditLoad, error)
-	PredictBalance(ctx context.Context, accountID int, days int) (*BalancePrediction, error)
+	PredictBalance(ctx context.Context, userID, accountID int, days int) (*BalancePrediction, error)
 }
 
 // EmailService определяет интерфейс сервиса отправки email

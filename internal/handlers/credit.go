@@ -81,6 +81,8 @@ func (h *CreditHandler) CreateCredit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Проверка прав доступа выполняется в middleware
+
 	// Создание запроса для сервиса (используя правильную структуру из domain)
 	creditReq := domain.CreateCreditRequest{
 		AccountID:    accountID,
@@ -118,6 +120,8 @@ func (h *CreditHandler) GetCreditSchedule(w http.ResponseWriter, r *http.Request
 		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid credit ID"))
 		return
 	}
+
+	// Проверка прав доступа выполняется в middleware
 
 	schedule, err := h.creditService.GetCreditSchedule(context.Background(), creditID)
 	if err != nil {

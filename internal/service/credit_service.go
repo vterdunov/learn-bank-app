@@ -55,7 +55,7 @@ func (s *creditService) CalculateAnnuityPayment(principal, rate float64, months 
 }
 
 // CreateCredit создает новый кредит с графиком платежей
-func (s *creditService) CreateCredit(ctx context.Context, req domain.CreateCreditRequest) (*domain.Credit, error) {
+func (s *creditService) CreateCredit(ctx context.Context, userID int, req domain.CreateCreditRequest) (*domain.Credit, error) {
 	// Валидация входных данных через доменную логику
 	if err := req.Validate(); err != nil {
 		s.logger.Warn("Invalid credit request", "error", err)
@@ -153,7 +153,7 @@ func (s *creditService) CreateCredit(ctx context.Context, req domain.CreateCredi
 }
 
 // GetCreditSchedule возвращает график платежей по кредиту
-func (s *creditService) GetCreditSchedule(ctx context.Context, creditID int) ([]*domain.PaymentSchedule, error) {
+func (s *creditService) GetCreditSchedule(ctx context.Context, userID, creditID int) ([]*domain.PaymentSchedule, error) {
 	// Проверяем существование кредита
 	credit, err := s.creditRepo.GetByID(ctx, creditID)
 	if err != nil {

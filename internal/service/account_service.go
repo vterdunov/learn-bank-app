@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strconv"
+	"net/http"
 	"time"
 
 	"github.com/vterdunov/learn-bank-app/internal/domain"
@@ -24,6 +24,7 @@ var (
 type accountService struct {
 	accountRepo     repository.AccountRepository
 	transactionRepo repository.TransactionRepository
+	accessControl   domain.AccessControlService
 	logger          *slog.Logger
 }
 
@@ -31,11 +32,13 @@ type accountService struct {
 func NewAccountService(
 	accountRepo repository.AccountRepository,
 	transactionRepo repository.TransactionRepository,
+	accessControl domain.AccessControlService,
 	logger *slog.Logger,
 ) AccountService {
 	return &accountService{
 		accountRepo:     accountRepo,
 		transactionRepo: transactionRepo,
+		accessControl:   accessControl,
 		logger:          logger,
 	}
 }
@@ -92,35 +95,44 @@ func (s *accountService) GetUserAccounts(ctx context.Context, userID int) ([]*do
 	return accounts, nil
 }
 
-// DepositMoney пополняет баланс счета
-func (s *accountService) DepositMoney(ctx context.Context, accountID int, amount float64) error {
-	// Валидация суммы
+// DepositMoney пополняет баланс счета с проверкой прав доступа
+func (s *accountService) DepositMoney(ctx context.Context, userID, accountID int, amount float64) error {
+	// 1. Проверка прав доступа (domain logic)
+	if err := s.accessControl.CanAccessAccount(ctx, userID, accountID); err != nil {
+		s.logger.Warn("Access denied for deposit", "user_id", userID, "account_id", accountID)
+		if domain.IsAccessDeniedError(err) {
+			return &ServiceError{Code: http.StatusForbidden, Message: err.Error()}
+		}
+		return err
+	}
+
+	// 2. Валидация суммы
 	if amount <= 0 {
 		s.logger.Warn("Invalid deposit amount", "account_id", accountID, "amount", amount)
 		return ErrInvalidAmount
 	}
 
-	// Получение счета
+	// 3. Получение счета
 	account, err := s.accountRepo.GetByID(ctx, accountID)
 	if err != nil {
 		s.logger.Error("Account not found for deposit", "account_id", accountID, "error", err)
 		return ErrAccountNotFound
 	}
 
-	// Проверка статуса счета
+	// 4. Проверка статуса счета
 	if account.Status != "active" {
 		s.logger.Warn("Account is not active", "account_id", accountID, "status", account.Status)
 		return ErrAccountBlocked
 	}
 
-	// Пополнение баланса
+	// 5. Пополнение баланса
 	newBalance := account.Balance + amount
 	if err := s.accountRepo.UpdateBalance(ctx, accountID, newBalance); err != nil {
 		s.logger.Error("Failed to update balance", "account_id", accountID, "error", err)
 		return fmt.Errorf("failed to update balance: %w", err)
 	}
 
-	// Создание записи о транзакции
+	// 6. Создание записи о транзакции
 	transaction := &domain.Transaction{
 		FromAccount: nil, // Пополнение извне
 		ToAccount:   &accountID,
@@ -138,6 +150,7 @@ func (s *accountService) DepositMoney(ctx context.Context, accountID int, amount
 	}
 
 	s.logger.Info("Account deposit successful",
+		"user_id", userID,
 		"account_id", accountID,
 		"amount", amount,
 		"new_balance", newBalance)
@@ -145,28 +158,37 @@ func (s *accountService) DepositMoney(ctx context.Context, accountID int, amount
 	return nil
 }
 
-// WithdrawMoney списывает средства со счета
-func (s *accountService) WithdrawMoney(ctx context.Context, accountID int, amount float64) error {
-	// Валидация суммы
+// WithdrawMoney списывает средства со счета с проверкой прав доступа
+func (s *accountService) WithdrawMoney(ctx context.Context, userID, accountID int, amount float64) error {
+	// 1. Проверка прав доступа (domain logic)
+	if err := s.accessControl.CanAccessAccount(ctx, userID, accountID); err != nil {
+		s.logger.Warn("Access denied for withdrawal", "user_id", userID, "account_id", accountID)
+		if domain.IsAccessDeniedError(err) {
+			return &ServiceError{Code: http.StatusForbidden, Message: err.Error()}
+		}
+		return err
+	}
+
+	// 2. Валидация суммы
 	if amount <= 0 {
 		s.logger.Warn("Invalid withdrawal amount", "account_id", accountID, "amount", amount)
 		return ErrInvalidAmount
 	}
 
-	// Получение счета
+	// 3. Получение счета
 	account, err := s.accountRepo.GetByID(ctx, accountID)
 	if err != nil {
 		s.logger.Error("Account not found for withdrawal", "account_id", accountID, "error", err)
 		return ErrAccountNotFound
 	}
 
-	// Проверка статуса счета
+	// 4. Проверка статуса счета
 	if account.Status != "active" {
 		s.logger.Warn("Account is not active", "account_id", accountID, "status", account.Status)
 		return ErrAccountBlocked
 	}
 
-	// Проверка достаточности средств
+	// 5. Проверка достаточности средств
 	if account.Balance < amount {
 		s.logger.Warn("Insufficient funds",
 			"account_id", accountID,
@@ -175,14 +197,14 @@ func (s *accountService) WithdrawMoney(ctx context.Context, accountID int, amoun
 		return ErrInsufficientFunds
 	}
 
-	// Списание средств
+	// 6. Списание средств
 	newBalance := account.Balance - amount
 	if err := s.accountRepo.UpdateBalance(ctx, accountID, newBalance); err != nil {
 		s.logger.Error("Failed to update balance", "account_id", accountID, "error", err)
 		return fmt.Errorf("failed to update balance: %w", err)
 	}
 
-	// Создание записи о транзакции
+	// 7. Создание записи о транзакции
 	transaction := &domain.Transaction{
 		FromAccount: &accountID,
 		ToAccount:   nil, // Списание во внешнюю систему
@@ -200,6 +222,7 @@ func (s *accountService) WithdrawMoney(ctx context.Context, accountID int, amoun
 	}
 
 	s.logger.Info("Account withdrawal successful",
+		"user_id", userID,
 		"account_id", accountID,
 		"amount", amount,
 		"new_balance", newBalance)
@@ -207,34 +230,40 @@ func (s *accountService) WithdrawMoney(ctx context.Context, accountID int, amoun
 	return nil
 }
 
-// TransferMoney переводит средства между счетами
-func (s *accountService) TransferMoney(ctx context.Context, fromAccountID, toAccountID int, amount float64) error {
-	// Валидация суммы
+// TransferMoney выполняет перевод между счетами с проверкой прав доступа
+func (s *accountService) TransferMoney(ctx context.Context, userID, fromAccountID, toAccountID int, amount float64) error {
+	// 1. Проверка прав доступа к исходящему счету (domain logic)
+	if err := s.accessControl.CanAccessAccount(ctx, userID, fromAccountID); err != nil {
+		s.logger.Warn("Access denied for transfer from account", "user_id", userID, "from_account_id", fromAccountID)
+		if domain.IsAccessDeniedError(err) {
+			return &ServiceError{Code: http.StatusForbidden, Message: err.Error()}
+		}
+		return err
+	}
+
+	// 2. Валидация суммы
 	if amount <= 0 {
-		s.logger.Warn("Invalid transfer amount",
-			"from_account", fromAccountID,
-			"to_account", toAccountID,
-			"amount", amount)
+		s.logger.Warn("Invalid transfer amount", "from_account_id", fromAccountID, "to_account_id", toAccountID, "amount", amount)
 		return ErrInvalidAmount
 	}
 
-	// Проверка, что счета разные
+	// 3. Валидация что счета разные
 	if fromAccountID == toAccountID {
 		s.logger.Warn("Cannot transfer to the same account", "account_id", fromAccountID)
-		return errors.New("cannot transfer to the same account")
+		return fmt.Errorf("cannot transfer to the same account")
 	}
 
-	// Используем транзакцию базы данных для атомарности
+	// 4. Выполнение перевода через репозиторий (транзакция)
 	if err := s.accountRepo.Transfer(ctx, fromAccountID, toAccountID, amount); err != nil {
 		s.logger.Error("Transfer failed",
-			"from_account", fromAccountID,
-			"to_account", toAccountID,
+			"from_account_id", fromAccountID,
+			"to_account_id", toAccountID,
 			"amount", amount,
 			"error", err)
 		return fmt.Errorf("transfer failed: %w", err)
 	}
 
-	// Создание записи о транзакции
+	// 5. Создание записи о транзакции
 	transaction := &domain.Transaction{
 		FromAccount: &fromAccountID,
 		ToAccount:   &toAccountID,
@@ -247,17 +276,14 @@ func (s *accountService) TransferMoney(ctx context.Context, fromAccountID, toAcc
 	}
 
 	if err := s.transactionRepo.Create(ctx, transaction); err != nil {
-		s.logger.Error("Failed to create transaction record",
-			"from_account", fromAccountID,
-			"to_account", toAccountID,
-			"amount", amount,
-			"error", err)
-		// Не возвращаем ошибку, так как перевод уже выполнен
+		s.logger.Error("Failed to create transaction record", "from_account_id", fromAccountID, "to_account_id", toAccountID, "amount", amount, "error", err)
+		// Не возвращаем ошибку, так как операция перевода уже выполнена
 	}
 
-	s.logger.Info("Transfer completed successfully",
-		"from_account", fromAccountID,
-		"to_account", toAccountID,
+	s.logger.Info("Transfer successful",
+		"user_id", userID,
+		"from_account_id", fromAccountID,
+		"to_account_id", toAccountID,
 		"amount", amount)
 
 	return nil
@@ -265,37 +291,29 @@ func (s *accountService) TransferMoney(ctx context.Context, fromAccountID, toAcc
 
 // generateAccountNumber генерирует уникальный номер счета
 func (s *accountService) generateAccountNumber() string {
-	// Генерация номера счета в формате: 408 17 810 XXXXXXXXXX X
-	// 408 - счета физических лиц в рублях
-	// 17 - код валюты (RUB)
-	// 810 - код страны (Россия)
-	// XXXXXXXXXX - случайные цифры
-	// X - контрольная цифра
-
-	bankCode := "40817810" // Стандартный код для счетов физлиц в рублях
-
-	// Генерируем 10 случайных цифр с использованием crypto/rand
-	randomBytes := make([]byte, 10)
-	if _, err := rand.Read(randomBytes); err != nil {
-		// Fallback на timestamp если crypto/rand недоступен
-		timestamp := time.Now().UnixNano()
-		for i := range randomBytes {
-			randomBytes[i] = byte(timestamp % 10)
-			timestamp /= 10
-		}
+	// Генерируем 16-значный номер счета
+	bytes := make([]byte, 8)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		// Fallback на timestamp если rand не работает
+		return fmt.Sprintf("40817810%d", time.Now().Unix())
 	}
 
-	accountDigits := make([]byte, 10)
-	for i := range accountDigits {
-		accountDigits[i] = byte('0' + (randomBytes[i] % 10))
+	var number uint64
+	for i, b := range bytes {
+		number |= uint64(b) << (8 * i)
 	}
 
-	// Простая контрольная сумма (последняя цифра)
-	sum := 0
-	for _, digit := range accountDigits {
-		sum += int(digit - '0')
-	}
-	checkDigit := sum % 10
+	// Формат: 40817810 + 12 цифр (банк.счет РФ)
+	return fmt.Sprintf("40817810%012d", number%1000000000000)
+}
 
-	return bankCode + string(accountDigits) + strconv.Itoa(checkDigit)
+// ServiceError кастомная ошибка сервиса с HTTP статус кодом
+type ServiceError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+func (e *ServiceError) Error() string {
+	return e.Message
 }

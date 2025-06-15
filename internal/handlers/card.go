@@ -12,30 +12,38 @@ import (
 	"github.com/vterdunov/learn-bank-app/internal/service"
 )
 
-// Card Request DTOs
+// CreateCardRequest структура запроса для создания карты
 type CreateCardRequest struct {
-	AccountID string `json:"account_id" validate:"required,uuid"`
-	CardType  string `json:"card_type" validate:"required,oneof=debit credit"`
+	AccountID    string `json:"account_id" validate:"required"`
+	CardType     string `json:"card_type" validate:"required,oneof=debit credit"`
+	PinCode      string `json:"pin_code" validate:"required,len=4,numeric"`
+	DailyLimit   int    `json:"daily_limit" validate:"required,min=1000,max=1000000"`
+	MonthlyLimit int    `json:"monthly_limit" validate:"required,min=5000,max=10000000"`
 }
 
+// CardPaymentRequest структура запроса для оплаты картой
 type CardPaymentRequest struct {
 	Amount      float64 `json:"amount" validate:"required,gt=0"`
-	Merchant    string  `json:"merchant" validate:"required,min=1,max=100"`
-	CVV         string  `json:"cvv" validate:"required,len=3,numeric"`
+	MerchantID  string  `json:"merchant_id" validate:"required"`
 	Description string  `json:"description,omitempty" validate:"max=255"`
+	CVV         string  `json:"cvv" validate:"required,len=3,numeric"`
 }
 
-// Card Response DTOs
+// CardResponse структура ответа с информацией о карте
 type CardResponse struct {
-	ID         string    `json:"id"`
-	AccountID  string    `json:"account_id"`
-	Number     string    `json:"number"` // Masked/encrypted
-	CVV        string    `json:"cvv"`    // Hashed
-	ExpiryDate time.Time `json:"expiry_date"`
-	Status     string    `json:"status"`
-	CardType   string    `json:"card_type"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID           string    `json:"id"`
+	AccountID    string    `json:"account_id"`
+	MaskedNumber string    `json:"masked_number"`
+	CardType     string    `json:"card_type"`
+	ExpiryMonth  int       `json:"expiry_month"`
+	ExpiryYear   int       `json:"expiry_year"`
+	Status       string    `json:"status"`
+	DailyLimit   int       `json:"daily_limit"`
+	MonthlyLimit int       `json:"monthly_limit"`
+	DailySpent   float64   `json:"daily_spent"`
+	MonthlySpent float64   `json:"monthly_spent"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // CardHandler обрабатывает запросы управления картами
@@ -51,26 +59,32 @@ func NewCardHandler(cardService service.CardService, logger *slog.Logger) *CardH
 	}
 }
 
-// CreateCard создает новую карту
+// CreateCard создает новую карту для счета
 func (h *CardHandler) CreateCard(w http.ResponseWriter, r *http.Request) {
 	var req CreateCardRequest
 
+	// Валидация JSON
 	if err := ValidateJSON(r, &req); err != nil {
 		WriteErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
+	// Валидация полей
 	if validationErr := Validate(&req); validationErr != nil {
 		WriteErrorResponse(w, http.StatusBadRequest, validationErr)
 		return
 	}
 
+	// Конвертация account ID
 	accountID, err := strconv.Atoi(req.AccountID)
 	if err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid account_id"))
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid account ID"))
 		return
 	}
 
+	// Проверка прав доступа выполняется в middleware
+
+	// Создание карты
 	card, err := h.cardService.CreateCard(context.Background(), accountID)
 	if err != nil {
 		h.logger.Error("Failed to create card", "account_id", accountID, "error", err.Error())
@@ -78,12 +92,15 @@ func (h *CardHandler) CreateCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := CardToResponse(card, "****-****-****-XXXX")
-	WriteSuccessResponse(w, response)
+	// Логирование
+	h.logger.Info("Card created", "card_id", card.ID, "account_id", accountID)
+
+	WriteSuccessResponse(w, CardToResponse(card))
 }
 
-// GetAccountCards получает карты по номеру счета
+// GetAccountCards получает все карты для указанного счета
 func (h *CardHandler) GetAccountCards(w http.ResponseWriter, r *http.Request) {
+	// Получение account ID из URL
 	accountIDStr := r.PathValue("accountId")
 	if accountIDStr == "" {
 		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("account ID required"))
@@ -96,6 +113,9 @@ func (h *CardHandler) GetAccountCards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Проверка прав доступа выполняется в middleware
+
+	// Получение карт
 	cards, err := h.cardService.GetAccountCards(context.Background(), accountID)
 	if err != nil {
 		h.logger.Error("Failed to get account cards", "account_id", accountID, "error", err.Error())
@@ -103,28 +123,35 @@ func (h *CardHandler) GetAccountCards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var responses []*CardResponse
+	// Конвертация в response формат
+	var cardResponses []*CardResponse
 	for _, card := range cards {
-		responses = append(responses, CardToResponse(card, "****-****-****-XXXX"))
+		cardResponses = append(cardResponses, CardToResponse(card))
 	}
 
-	WriteSuccessResponse(w, responses)
+	WriteSuccessResponse(w, map[string]interface{}{
+		"cards": cardResponses,
+		"count": len(cardResponses),
+	})
 }
 
-// ProcessPayment обрабатывает оплату картой
-func (h *CardHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) {
+// CardPayment выполняет оплату картой
+func (h *CardHandler) CardPayment(w http.ResponseWriter, r *http.Request) {
 	var req CardPaymentRequest
 
+	// Валидация JSON
 	if err := ValidateJSON(r, &req); err != nil {
 		WriteErrorResponse(w, http.StatusBadRequest, err)
 		return
 	}
 
+	// Валидация полей
 	if validationErr := Validate(&req); validationErr != nil {
 		WriteErrorResponse(w, http.StatusBadRequest, validationErr)
 		return
 	}
 
+	// Получение card ID из URL
 	cardIDStr := r.PathValue("id")
 	if cardIDStr == "" {
 		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("card ID required"))
@@ -137,27 +164,49 @@ func (h *CardHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Проверка прав доступа выполняется в middleware
+
+	// Выполнение платежа
 	if err := h.cardService.ProcessPayment(context.Background(), cardID, req.Amount); err != nil {
-		h.logger.Error("Failed to process payment", "card_id", cardID, "amount", req.Amount, "error", err.Error())
-		WriteErrorResponse(w, http.StatusInternalServerError, err)
+		h.logger.Error("Failed to process card payment",
+			"card_id", cardID,
+			"amount", req.Amount,
+			"error", err.Error())
+
+		// Определяем статус код на основе ошибки
+		statusCode := http.StatusInternalServerError
+		if err.Error() == "insufficient funds" || err.Error() == "invalid CVV" || err.Error() == "card expired" {
+			statusCode = http.StatusBadRequest
+		}
+
+		WriteErrorResponse(w, statusCode, err)
 		return
 	}
 
-	h.logger.Info("Payment processed", "card_id", cardID, "amount", req.Amount, "merchant", req.Merchant)
+	// Логирование
+	h.logger.Info("Card payment processed",
+		"card_id", cardID,
+		"amount", req.Amount,
+		"merchant_id", req.MerchantID)
+
 	WriteSuccessResponse(w, map[string]string{"message": "Payment successful"})
 }
 
 // Conversion functions
-func CardToResponse(card *domain.Card, number string) *CardResponse {
+func CardToResponse(card *domain.Card) *CardResponse {
 	return &CardResponse{
-		ID:         fmt.Sprintf("%d", card.ID),
-		AccountID:  fmt.Sprintf("%d", card.AccountID),
-		Number:     number,
-		CVV:        "***",
-		ExpiryDate: card.ExpiryDate,
-		Status:     card.Status,
-		CardType:   domain.CardTypeLearnBank,
-		CreatedAt:  card.CreatedAt,
-		UpdatedAt:  card.UpdatedAt,
+		ID:           fmt.Sprintf("%d", card.ID),
+		AccountID:    fmt.Sprintf("%d", card.AccountID),
+		MaskedNumber: "****-****-****-XXXX", // Маскированный номер
+		CardType:     domain.CardTypeLearnBank,
+		ExpiryMonth:  int(card.ExpiryDate.Month()),
+		ExpiryYear:   card.ExpiryDate.Year(),
+		Status:       card.Status,
+		DailyLimit:   100000,  // Пример лимита
+		MonthlyLimit: 1000000, // Пример лимита
+		DailySpent:   0.0,     // Заглушка
+		MonthlySpent: 0.0,     // Заглушка
+		CreatedAt:    card.CreatedAt,
+		UpdatedAt:    card.UpdatedAt,
 	}
 }

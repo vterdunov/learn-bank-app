@@ -282,15 +282,15 @@ func validateCardPaymentRequest(req *CardPaymentRequest) []FieldError {
 		})
 	}
 
-	if req.Merchant == "" {
+	if req.MerchantID == "" {
 		errors = append(errors, FieldError{
-			Field:   "merchant",
-			Message: "merchant is required",
+			Field:   "merchant_id",
+			Message: "merchant_id is required",
 		})
-	} else if len(req.Merchant) > 100 {
+	} else if len(req.MerchantID) > 100 {
 		errors = append(errors, FieldError{
-			Field:   "merchant",
-			Message: "merchant name must not exceed 100 characters",
+			Field:   "merchant_id",
+			Message: "merchant_id must not exceed 100 characters",
 		})
 	}
 

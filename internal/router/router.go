@@ -90,7 +90,7 @@ func (r *Router) setupRoutes() {
 	// Card endpoints
 	r.mux.Handle("POST /api/v1/cards", authMiddleware(http.HandlerFunc(r.handlers.Card.CreateCard)))
 	r.mux.Handle("GET /api/v1/accounts/{accountId}/cards", authMiddleware(http.HandlerFunc(r.handlers.Card.GetAccountCards)))
-	r.mux.Handle("POST /api/v1/cards/{id}/payment", authMiddleware(http.HandlerFunc(r.handlers.Card.ProcessPayment)))
+	r.mux.Handle("POST /api/v1/cards/{id}/payment", authMiddleware(http.HandlerFunc(r.handlers.Card.CardPayment)))
 
 	// Credit endpoints
 	r.mux.Handle("POST /api/v1/credits", authMiddleware(http.HandlerFunc(r.handlers.Credit.CreateCredit)))

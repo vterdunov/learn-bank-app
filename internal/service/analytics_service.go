@@ -78,7 +78,7 @@ func (s *analyticsService) GetCreditLoad(ctx context.Context, userID int) (*Cred
 }
 
 // PredictBalance возвращает прогноз баланса счета на N дней
-func (s *analyticsService) PredictBalance(ctx context.Context, accountID int, days int) (*BalancePrediction, error) {
+func (s *analyticsService) PredictBalance(ctx context.Context, userID, accountID int, days int) (*BalancePrediction, error) {
 	s.logger.Info("Predicting balance",
 		slog.Int("account_id", accountID),
 		slog.Int("days", days),
