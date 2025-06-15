@@ -1,0 +1,35 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+TESTING_CHECKLIST.md
+
+# Development files
+.env
+.env.example
+mise.toml
+
+# Build artifacts
+learn-bank-app
+tmp/
+
+# Dependencies
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
