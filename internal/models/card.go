@@ -39,3 +39,8 @@ const (
 	CardStatusBlocked = "blocked"
 	CardStatusExpired = "expired"
 )
+
+// CardType определяет тип карты LearnBank
+const (
+	CardTypeLearnBank = "LEARNBANK"
+)

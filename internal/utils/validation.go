@@ -172,7 +172,7 @@ func ValidateAccountNumber(accountNumber string) error {
 	return nil
 }
 
-// ValidateCardNumber проверяет номер карты с помощью алгоритма Луна
+// ValidateCardNumber проверяет номер карты LearnBank с помощью алгоритма Луна
 func ValidateCardNumber(cardNumber string) error {
 	if strings.TrimSpace(cardNumber) == "" {
 		return ErrEmptyField
@@ -186,9 +186,17 @@ func ValidateCardNumber(cardNumber string) error {
 		return ErrInvalidCardNumber
 	}
 
-	// Длина должна быть от 13 до 19 цифр
-	if len(cardNumber) < 13 || len(cardNumber) > 19 {
+	// Длина должна быть 16 цифр для карт LearnBank
+	if len(cardNumber) != 16 {
 		return ErrInvalidCardNumber
+	}
+
+	// Проверяем что это карта LearnBank (префикс 7777)
+	if len(cardNumber) >= 4 {
+		prefix := cardNumber[:4]
+		if prefix != "7777" {
+			return errors.New("only LearnBank cards are supported")
+		}
 	}
 
 	// Проверка алгоритмом Луна
@@ -301,6 +309,14 @@ func ValidateCardStatus(status string) error {
 	}
 
 	return ErrInvalidStatus
+}
+
+// ValidateCardType проверяет тип карты LearnBank
+func ValidateCardType(cardType string) error {
+	if cardType == "LEARNBANK" {
+		return nil
+	}
+	return errors.New("invalid card type")
 }
 
 // ValidateTransactionType проверяет тип транзакции
