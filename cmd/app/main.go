@@ -12,6 +12,7 @@ import (
 
 	"github.com/vterdunov/learn-bank-app/internal/config"
 	"github.com/vterdunov/learn-bank-app/internal/database"
+	"github.com/vterdunov/learn-bank-app/internal/utils"
 )
 
 func main() {
@@ -27,6 +28,9 @@ func main() {
 		slog.Error("Failed to load config", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
+
+	// Инициализация JWT
+	utils.InitJWT(cfg.JWT.Secret)
 
 	// Создание контекста с отменой
 	ctx, cancel := context.WithCancel(context.Background())

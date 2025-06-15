@@ -222,3 +222,41 @@ func (j *JWTManager) SetTokenExpiry(expiry time.Duration) {
 func (j *JWTManager) SetRefreshExpiry(expiry time.Duration) {
 	j.refreshExpiry = expiry
 }
+
+// Глобальные функции для совместимости
+
+//nolint:gochecknoglobals // глобальная переменная для простого API
+var defaultJWTManager *JWTManager
+
+// InitJWT инициализирует глобальный JWT менеджер
+func InitJWT(secretKey string) {
+	defaultJWTManager = NewJWTManager(secretKey)
+}
+
+// GenerateJWT генерирует JWT токен (упрощенная версия)
+func GenerateJWT(userID string) (string, error) {
+	if defaultJWTManager == nil {
+		return "", errors.New("JWT manager not initialized")
+	}
+
+	id, err := strconv.Atoi(userID)
+	if err != nil {
+		return "", fmt.Errorf("invalid user ID: %w", err)
+	}
+
+	return defaultJWTManager.GenerateToken(id, "", "")
+}
+
+// ValidateJWT проверяет JWT токен и возвращает user ID
+func ValidateJWT(tokenString string) (string, error) {
+	if defaultJWTManager == nil {
+		return "", errors.New("JWT manager not initialized")
+	}
+
+	claims, err := defaultJWTManager.ValidateToken(tokenString)
+	if err != nil {
+		return "", err
+	}
+
+	return strconv.Itoa(claims.UserID), nil
+}
