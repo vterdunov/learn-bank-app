@@ -36,8 +36,19 @@ func (m *MockUserRepository) Create(ctx context.Context, user *domain.User) erro
 
 	user.ID = m.nextID
 	m.nextID++
-	m.users[user.Email] = user
-	m.usersByID[user.ID] = user
+
+	// Создаем копию пользователя для сохранения в репозитории
+	savedUser := &domain.User{
+		ID:           user.ID,
+		Username:     user.Username,
+		Email:        user.Email,
+		PasswordHash: user.PasswordHash,
+		CreatedAt:    user.CreatedAt,
+		UpdatedAt:    user.UpdatedAt,
+	}
+
+	m.users[user.Email] = savedUser
+	m.usersByID[user.ID] = savedUser
 	return nil
 }
 
@@ -173,7 +184,7 @@ func TestAuthService_Register(t *testing.T) {
 			t.Error("Expected password hash to be saved in repository")
 		} else {
 			// Проверяем что пароль корректно хешируется
-			err = utils.VerifyPassword(req.Password, savedUser.PasswordHash)
+			err = utils.VerifyPassword(savedUser.PasswordHash, req.Password)
 			if err != nil {
 				t.Errorf("Expected password to be correctly hashed, got error: %v", err)
 			}
@@ -289,18 +300,24 @@ func TestAuthService_Login(t *testing.T) {
 	service, mockRepo := setupAuthService()
 	ctx := context.Background()
 
-	// Создаем пользователя для тестов через регистрацию
-	regReq := RegisterRequest{
-		Username: "testuser",
-		Email:    "test@example.com",
-		Password: "SecurePass123!",
+	// Создаем пользователя напрямую в репозитории
+	hashedPassword, err := utils.HashPassword("SecurePass123!")
+	if err != nil {
+		t.Fatalf("Failed to hash password: %v", err)
 	}
 
-	// Регистрируем пользователя чтобы он попал в mockRepo
-	_, err := service.Register(ctx, regReq)
-	if err != nil {
-		t.Fatalf("Failed to register test user: %v", err)
+	testUser := &domain.User{
+		ID:           1,
+		Username:     "testuser",
+		Email:        "test@example.com",
+		PasswordHash: hashedPassword,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
+
+	// Добавляем пользователя в мок репозиторий
+	mockRepo.users[testUser.Email] = testUser
+	mockRepo.usersByID[testUser.ID] = testUser
 
 	t.Run("successful login", func(t *testing.T) {
 		req := LoginRequest{

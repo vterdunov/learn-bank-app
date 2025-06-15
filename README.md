@@ -1,5 +1,7 @@
 # Bank App
 
+[![CI](https://github.com/vterdunov/learn-bank-app/actions/workflows/ci.yml/badge.svg)](https://github.com/vterdunov/learn-bank-app/actions/workflows/ci.yml)
+
 REST API для банковского сервиса на Go с использованием чистой архитектуры.
 
 ## Содержание
