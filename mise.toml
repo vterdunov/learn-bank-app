@@ -1,6 +1,9 @@
 [tools]
 buf = "1.48.0"
 
+[env]
+_.file = '.env'
+
 [tasks.lint]
 description = "Run linters."
 run = "golangci-lint run"
