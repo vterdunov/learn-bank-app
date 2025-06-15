@@ -83,6 +83,12 @@ func main() {
 	creditService := service.NewCreditService(creditRepo, paymentScheduleRepo, accountRepo, transactionRepo, cbrService, lg)
 	analyticsService := service.NewAnalyticsService(accountRepo, transactionRepo, creditRepo)
 
+	// Инициализация email сервиса для шедулера
+	emailService := service.NewEmailService(cfg, lg)
+
+	// Инициализация шедулера
+	scheduler := service.NewSchedulerService(cfg, creditRepo, paymentScheduleRepo, accountRepo, transactionRepo, userRepo, emailService, lg)
+
 	// Инициализация роутера со всеми сервисами
 	routerConfig := router.Config{
 		Logger:    lg,
@@ -93,10 +99,18 @@ func main() {
 			Card:      cardService,
 			Credit:    creditService,
 			Analytics: analyticsService,
+			CBR:       cbrService,
 		},
 	}
 
 	appRouter := router.New(routerConfig)
+
+	// Запуск шедулера
+	if err := scheduler.Start(ctx); err != nil {
+		slog.Error("Failed to start scheduler", slog.String("error", err.Error()))
+		os.Exit(1)
+	}
+	slog.Info("Scheduler started")
 
 	// Настройка HTTP сервера
 	server := &http.Server{
@@ -113,11 +127,16 @@ func main() {
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 		<-sigChan
 
-		slog.Info("Shutting down server...")
+		slog.Info("Shutting down server and scheduler...")
 
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer shutdownCancel()
 
+		// Останавливаем шедулер
+		scheduler.Stop()
+		slog.Info("Scheduler stopped")
+
+		// Останавливаем HTTP сервер
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			slog.Error("Server shutdown error", slog.String("error", err.Error()))
 		}

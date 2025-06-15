@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // Account представляет банковский счет
 type Account struct {
@@ -42,3 +45,74 @@ const (
 	AccountStatusBlocked = "blocked"
 	AccountStatusClosed  = "closed"
 )
+
+// Validation errors
+var (
+	ErrInvalidAccountBalance  = errors.New("invalid account balance")
+	ErrInvalidAccountCurrency = errors.New("invalid account currency")
+	ErrInvalidAccountStatus   = errors.New("invalid account status")
+	ErrInvalidDepositAmount   = errors.New("invalid deposit amount")
+	ErrInvalidWithdrawAmount  = errors.New("invalid withdraw amount")
+	ErrInvalidTransferAmount  = errors.New("invalid transfer amount")
+)
+
+// Validate валидирует счет
+func (a *Account) Validate() error {
+	if a.Balance < 0 {
+		return ErrInvalidAccountBalance
+	}
+	if a.Currency != "RUB" {
+		return ErrInvalidAccountCurrency
+	}
+	if a.Status != AccountStatusActive && a.Status != AccountStatusBlocked && a.Status != AccountStatusClosed {
+		return ErrInvalidAccountStatus
+	}
+	return nil
+}
+
+// Validate валидирует запрос на создание счета
+func (r *CreateAccountRequest) Validate() error {
+	if r.Currency != "RUB" {
+		return ErrInvalidAccountCurrency
+	}
+	return nil
+}
+
+// Validate валидирует запрос на пополнение
+func (r *DepositRequest) Validate() error {
+	if r.Amount <= 0 {
+		return ErrInvalidDepositAmount
+	}
+	if r.Amount > 1000000000 {
+		return ErrInvalidDepositAmount
+	}
+	return nil
+}
+
+// Validate валидирует запрос на списание
+func (r *WithdrawRequest) Validate() error {
+	if r.Amount <= 0 {
+		return ErrInvalidWithdrawAmount
+	}
+	if r.Amount > 1000000000 {
+		return ErrInvalidWithdrawAmount
+	}
+	return nil
+}
+
+// Validate валидирует запрос на перевод
+func (r *TransferRequest) Validate() error {
+	if r.Amount <= 0 {
+		return ErrInvalidTransferAmount
+	}
+	if r.Amount > 1000000000 {
+		return ErrInvalidTransferAmount
+	}
+	if r.FromAccountID <= 0 || r.ToAccountID <= 0 {
+		return errors.New("invalid account IDs")
+	}
+	if r.FromAccountID == r.ToAccountID {
+		return errors.New("cannot transfer to the same account")
+	}
+	return nil
+}

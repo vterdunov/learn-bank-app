@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 // Transaction представляет транзакцию
 type Transaction struct {
@@ -31,3 +34,57 @@ const (
 	TransactionStatusFailed    = "failed"
 	TransactionStatusCancelled = "cancelled"
 )
+
+// Validation errors
+var (
+	ErrInvalidTransactionAmount = errors.New("invalid transaction amount")
+	ErrInvalidTransactionType   = errors.New("invalid transaction type")
+	ErrInvalidTransactionStatus = errors.New("invalid transaction status")
+)
+
+// Validate валидирует транзакцию
+func (t *Transaction) Validate() error {
+	if t.Amount <= 0 {
+		return ErrInvalidTransactionAmount
+	}
+	if t.Amount > 1000000000 {
+		return ErrInvalidTransactionAmount
+	}
+
+	validTypes := []string{
+		TransactionTypeDeposit,
+		TransactionTypeWithdraw,
+		TransactionTypeTransfer,
+		TransactionTypePayment,
+		TransactionTypeCredit,
+	}
+	isValidType := false
+	for _, validType := range validTypes {
+		if t.Type == validType {
+			isValidType = true
+			break
+		}
+	}
+	if !isValidType {
+		return ErrInvalidTransactionType
+	}
+
+	validStatuses := []string{
+		TransactionStatusPending,
+		TransactionStatusCompleted,
+		TransactionStatusFailed,
+		TransactionStatusCancelled,
+	}
+	isValidStatus := false
+	for _, validStatus := range validStatuses {
+		if t.Status == validStatus {
+			isValidStatus = true
+			break
+		}
+	}
+	if !isValidStatus {
+		return ErrInvalidTransactionStatus
+	}
+
+	return nil
+}

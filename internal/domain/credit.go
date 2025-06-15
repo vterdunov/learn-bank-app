@@ -143,7 +143,52 @@ const (
 
 // Domain errors
 var (
-	ErrInvalidCreditAmount = errors.New("invalid credit amount")
-	ErrInvalidCreditTerm   = errors.New("invalid credit term")
-	ErrInvalidAccountID    = errors.New("invalid account ID")
+	ErrInvalidCreditAmount   = errors.New("invalid credit amount")
+	ErrInvalidCreditTerm     = errors.New("invalid credit term")
+	ErrInvalidAccountID      = errors.New("invalid account ID")
+	ErrInvalidInterestRate   = errors.New("invalid interest rate")
+	ErrInvalidMonthlyPayment = errors.New("invalid monthly payment")
+	ErrInvalidRemainingDebt  = errors.New("invalid remaining debt")
+	ErrInvalidCreditStatus   = errors.New("invalid credit status")
 )
+
+// Validate валидирует кредит
+func (c *Credit) Validate() error {
+	if c.Amount <= 0 {
+		return ErrInvalidCreditAmount
+	}
+	if c.Amount > 100000000 { // максимум 100 млн
+		return ErrInvalidCreditAmount
+	}
+	if c.InterestRate < 0 || c.InterestRate > 100 {
+		return ErrInvalidInterestRate
+	}
+	if c.TermMonths <= 0 || c.TermMonths > 360 {
+		return ErrInvalidCreditTerm
+	}
+	if c.MonthlyPayment <= 0 {
+		return ErrInvalidMonthlyPayment
+	}
+	if c.RemainingDebt < 0 {
+		return ErrInvalidRemainingDebt
+	}
+
+	validStatuses := []string{
+		CreditStatusActive,
+		CreditStatusPaidOff,
+		CreditStatusOverdue,
+		CreditStatusCancelled,
+	}
+	isValidStatus := false
+	for _, validStatus := range validStatuses {
+		if c.Status == validStatus {
+			isValidStatus = true
+			break
+		}
+	}
+	if !isValidStatus {
+		return ErrInvalidCreditStatus
+	}
+
+	return nil
+}

@@ -95,6 +95,7 @@ func (s *creditService) CreateCredit(ctx context.Context, userID int, req domain
 
 	// Создаем кредит
 	credit := &domain.Credit{
+		UserID:         userID,
 		AccountID:      req.AccountID,
 		Amount:         req.Amount,
 		InterestRate:   creditRate,

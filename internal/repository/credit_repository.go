@@ -24,13 +24,17 @@ func NewCreditRepository(db *pgxpool.Pool) CreditRepository {
 // Create создает новый кредит
 func (r *CreditRepositoryImpl) Create(ctx context.Context, credit *domain.Credit) error {
 	query := `
-		INSERT INTO credits (user_id, account_id, amount, interest_rate, term_months, monthly_payment, remaining_debt, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO credits (user_id, account_id, amount, interest_rate, term_months, monthly_payment, remaining_debt, status, start_date, end_date, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id`
 
 	now := time.Now()
 	credit.CreatedAt = now
 	credit.UpdatedAt = now
+
+	// Рассчитываем дату окончания кредита
+	startDate := now
+	endDate := startDate.AddDate(0, credit.TermMonths, 0)
 
 	err := r.db.QueryRow(ctx, query,
 		credit.UserID,
@@ -41,6 +45,8 @@ func (r *CreditRepositoryImpl) Create(ctx context.Context, credit *domain.Credit
 		credit.MonthlyPayment,
 		credit.RemainingDebt,
 		credit.Status,
+		startDate,
+		endDate,
 		credit.CreatedAt,
 		credit.UpdatedAt,
 	).Scan(&credit.ID)
@@ -302,8 +308,8 @@ func NewPaymentScheduleRepository(db *pgxpool.Pool) PaymentScheduleRepository {
 // Create создает новый платеж
 func (r *PaymentScheduleRepositoryImpl) Create(ctx context.Context, payment *domain.PaymentSchedule) error {
 	query := `
-		INSERT INTO payment_schedules (credit_id, payment_number, due_date, payment_amount, principal_amount, interest_amount, remaining_balance, status, penalty_amount, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		INSERT INTO payment_schedules (credit_id, payment_number, due_date, payment_amount, principal_amount, interest_amount, status, penalty_amount, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id`
 
 	now := time.Now()
@@ -317,7 +323,6 @@ func (r *PaymentScheduleRepositoryImpl) Create(ctx context.Context, payment *dom
 		payment.PaymentAmount,
 		payment.PrincipalAmount,
 		payment.InterestAmount,
-		payment.RemainingBalance,
 		payment.Status,
 		payment.PenaltyAmount,
 		payment.CreatedAt,

@@ -58,15 +58,9 @@ func NewAnalyticsHandler(analyticsService service.AnalyticsService, logger *slog
 
 // GetMonthlyStats получает месячную статистику
 func (h *AnalyticsHandler) GetMonthlyStats(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.Context().Value("userID")
-	if userIDStr == nil {
-		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
-		return
-	}
-
-	userID, err := strconv.Atoi(userIDStr.(string))
+	userID, err := GetUserIDFromRequest(r)
 	if err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		WriteErrorResponse(w, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -93,15 +87,9 @@ func (h *AnalyticsHandler) GetMonthlyStats(w http.ResponseWriter, r *http.Reques
 
 // GetCreditLoad получает кредитную нагрузку пользователя
 func (h *AnalyticsHandler) GetCreditLoad(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.Context().Value("userID")
-	if userIDStr == nil {
-		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
-		return
-	}
-
-	userID, err := strconv.Atoi(userIDStr.(string))
+	userID, err := GetUserIDFromRequest(r)
 	if err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		WriteErrorResponse(w, http.StatusUnauthorized, err)
 		return
 	}
 
@@ -141,15 +129,9 @@ func (h *AnalyticsHandler) PredictBalance(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	userIDStr := r.Context().Value("userID")
-	if userIDStr == nil {
-		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
-		return
-	}
-
-	userID, err := strconv.Atoi(userIDStr.(string))
+	userID, err := GetUserIDFromRequest(r)
 	if err != nil {
-		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		WriteErrorResponse(w, http.StatusUnauthorized, err)
 		return
 	}
 

@@ -24,6 +24,7 @@ type Handlers struct {
 	Card      *handlers.CardHandler
 	Credit    *handlers.CreditHandler
 	Analytics *handlers.AnalyticsHandler
+	CBR       *handlers.CBRHandler
 }
 
 // Config содержит конфигурацию для роутера
@@ -40,6 +41,7 @@ type Services struct {
 	Card      service.CardService
 	Credit    service.CreditService
 	Analytics service.AnalyticsService
+	CBR       service.CBRService
 }
 
 // New создает новый роутер
@@ -51,6 +53,7 @@ func New(config Config) *Router {
 		Card:      handlers.NewCardHandler(config.Services.Card, config.Logger),
 		Credit:    handlers.NewCreditHandler(config.Services.Credit, config.Logger),
 		Analytics: handlers.NewAnalyticsHandler(config.Services.Analytics, config.Logger),
+		CBR:       handlers.NewCBRHandler(config.Services.CBR, config.Logger),
 	}
 
 	router := &Router{
@@ -103,6 +106,9 @@ func (r *Router) setupRoutes() {
 	r.mux.Handle("GET /api/v1/analytics/monthly", authMiddleware(http.HandlerFunc(r.handlers.Analytics.GetMonthlyStats)))
 	r.mux.Handle("GET /api/v1/analytics/credit-load", authMiddleware(http.HandlerFunc(r.handlers.Analytics.GetCreditLoad)))
 	r.mux.Handle("POST /api/v1/analytics/balance-prediction", authMiddleware(http.HandlerFunc(r.handlers.Analytics.PredictBalance)))
+
+	// CBR endpoints (public)
+	r.mux.Handle("GET /api/v1/cbr/rate", commonMiddleware(http.HandlerFunc(r.handlers.CBR.GetCBRRate)))
 
 	// Health check endpoint
 	r.mux.Handle("GET /health", commonMiddleware(http.HandlerFunc(r.healthCheck)))
