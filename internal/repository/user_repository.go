@@ -2,10 +2,8 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/vterdunov/learn-bank-app/internal/models"
@@ -42,10 +40,7 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, user *models.User) erro
 	).Scan(&user.ID)
 
 	if err != nil {
-		if utils.IsUniqueConstraintError(err) {
-			return utils.ParseUniqueConstraintError(err, user.Email, user.Username)
-		}
-		return err
+		return utils.WrapDBError(err, "create user")
 	}
 
 	return nil
@@ -69,10 +64,10 @@ func (r *UserRepositoryImpl) GetByID(ctx context.Context, id int) (*models.User,
 	)
 
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if utils.IsRecordNotFound(err) {
 			return nil, utils.ErrUserNotFound
 		}
-		return nil, err
+		return nil, utils.WrapDBError(err, "get user by id")
 	}
 
 	return user, nil
@@ -96,10 +91,10 @@ func (r *UserRepositoryImpl) GetByEmail(ctx context.Context, email string) (*mod
 	)
 
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if utils.IsRecordNotFound(err) {
 			return nil, utils.ErrUserNotFound
 		}
-		return nil, err
+		return nil, utils.WrapDBError(err, "get user by email")
 	}
 
 	return user, nil
@@ -123,10 +118,10 @@ func (r *UserRepositoryImpl) GetByUsername(ctx context.Context, username string)
 	)
 
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if utils.IsRecordNotFound(err) {
 			return nil, utils.ErrUserNotFound
 		}
-		return nil, err
+		return nil, utils.WrapDBError(err, "get user by username")
 	}
 
 	return user, nil
@@ -150,10 +145,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, user *models.User) erro
 	)
 
 	if err != nil {
-		if utils.IsUniqueConstraintError(err) {
-			return utils.ParseUniqueConstraintError(err, user.Email, user.Username)
-		}
-		return err
+		return utils.WrapDBError(err, "update user")
 	}
 
 	if result.RowsAffected() == 0 {
@@ -169,7 +161,7 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id int) error {
 
 	result, err := r.db.Exec(ctx, query, id)
 	if err != nil {
-		return err
+		return utils.WrapDBError(err, "delete user")
 	}
 
 	if result.RowsAffected() == 0 {
@@ -186,7 +178,7 @@ func (r *UserRepositoryImpl) EmailExists(ctx context.Context, email string) (boo
 	var exists bool
 	err := r.db.QueryRow(ctx, query, email).Scan(&exists)
 	if err != nil {
-		return false, err
+		return false, utils.WrapDBError(err, "check email exists")
 	}
 
 	return exists, nil
@@ -199,7 +191,7 @@ func (r *UserRepositoryImpl) UsernameExists(ctx context.Context, username string
 	var exists bool
 	err := r.db.QueryRow(ctx, query, username).Scan(&exists)
 	if err != nil {
-		return false, err
+		return false, utils.WrapDBError(err, "check username exists")
 	}
 
 	return exists, nil
