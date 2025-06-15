@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/vterdunov/learn-bank-app/pkg/logger"
 )
 
 // ResponseWriter wrapper для захвата статус кода
@@ -31,14 +33,17 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	return n, err
 }
 
-// LoggingMiddleware логирует HTTP запросы
-func LoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
+// LoggingMiddleware логирует все HTTP запросы
+func LoggingMiddleware(lg *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
 
-			// Создаем wrapper для response writer
-			wrapped := newResponseWriter(w)
+			// Создаем wrapped response writer для отслеживания статуса
+			wrapped := &responseWriter{
+				ResponseWriter: w,
+				statusCode:     http.StatusOK,
+			}
 
 			// Выполняем запрос
 			next.ServeHTTP(wrapped, r)
@@ -46,17 +51,39 @@ func LoggingMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 			// Вычисляем время выполнения
 			duration := time.Since(start)
 
-			// Логируем информацию о запросе
-			logger.Info("HTTP Request",
-				slog.String("method", r.Method),
-				slog.String("path", r.URL.Path),
-				slog.String("query", r.URL.RawQuery),
-				slog.String("remote_addr", r.RemoteAddr),
-				slog.String("user_agent", r.UserAgent()),
-				slog.Int("status_code", wrapped.statusCode),
-				slog.Int("response_size", wrapped.written),
-				slog.Duration("duration", duration),
+			// Логируем запрос
+			logger.LogOperation(
+				lg,
+				"http_request",
+				wrapped.statusCode < 400,
+				duration.Milliseconds(),
+				"method", r.Method,
+				"uri", r.RequestURI,
+				"remote_addr", r.RemoteAddr,
+				"user_agent", r.UserAgent(),
+				"status_code", wrapped.statusCode,
 			)
+
+			// Логируем ошибки отдельно
+			if wrapped.statusCode >= 400 {
+				severity := "medium"
+				if wrapped.statusCode >= 500 {
+					severity = "high"
+				}
+
+				logger.LogSecurityEvent(
+					lg,
+					"http_error",
+					severity,
+					map[string]interface{}{
+						"method":      r.Method,
+						"uri":         r.RequestURI,
+						"status_code": wrapped.statusCode,
+						"remote_addr": r.RemoteAddr,
+						"user_agent":  r.UserAgent(),
+					},
+				)
+			}
 		})
 	}
 }

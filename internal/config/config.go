@@ -14,6 +14,7 @@ type Config struct {
 	SMTP      SMTPConfig
 	CBR       CBRConfig
 	Scheduler SchedulerConfig
+	Logger    LoggerConfig
 }
 
 type ServerConfig struct {
@@ -51,6 +52,12 @@ type SchedulerConfig struct {
 	PenaltyRate float64
 }
 
+type LoggerConfig struct {
+	Level  string
+	Format string
+	Output string
+}
+
 func Load() (*Config, error) {
 	cfg := &Config{
 		Server: ServerConfig{
@@ -81,6 +88,11 @@ func Load() (*Config, error) {
 		Scheduler: SchedulerConfig{
 			Interval:    getEnvDuration("SCHEDULER_INTERVAL", 12*time.Hour),
 			PenaltyRate: getEnvFloat("SCHEDULER_PENALTY_RATE", 10.0),
+		},
+		Logger: LoggerConfig{
+			Level:  getEnvString("LOG_LEVEL", "info"),
+			Format: getEnvString("LOG_FORMAT", "text"),
+			Output: getEnvString("LOG_OUTPUT", "stdout"),
 		},
 	}
 
