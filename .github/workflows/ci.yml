@@ -66,10 +66,8 @@ jobs:
         HMAC_SECRET: test-hmac-secret
       run: go test -v ./...
 
-    - name: Run linter
-      uses: golangci/golangci-lint-action@v3
-      with:
-        version: latest
+    - name: Run linters
+      uses: golangci/golangci-lint-action@v8.0.0
 
   build-and-push:
     needs: test
