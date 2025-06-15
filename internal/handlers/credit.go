@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -81,7 +80,18 @@ func (h *CreditHandler) CreateCredit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Проверка прав доступа выполняется в middleware
+	// Получение userID из контекста
+	userIDStr := r.Context().Value("userID")
+	if userIDStr == nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr.(string))
+	if err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		return
+	}
 
 	// Создание запроса для сервиса (используя правильную структуру из domain)
 	creditReq := domain.CreateCreditRequest{
@@ -91,10 +101,11 @@ func (h *CreditHandler) CreateCredit(w http.ResponseWriter, r *http.Request) {
 		InterestRate: 15.0, // Базовая ставка, может быть получена из ЦБ РФ
 	}
 
-	credit, err := h.creditService.CreateCredit(context.Background(), creditReq)
+	credit, err := h.creditService.CreateCredit(r.Context(), userID, creditReq)
 	if err != nil {
 		h.logger.Error("Failed to create credit",
 			"account_id", accountID,
+			"user_id", userID,
 			"amount", req.Amount,
 			"error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
@@ -121,11 +132,22 @@ func (h *CreditHandler) GetCreditSchedule(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Проверка прав доступа выполняется в middleware
+	// Получение userID из контекста
+	userIDStr := r.Context().Value("userID")
+	if userIDStr == nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
+		return
+	}
 
-	schedule, err := h.creditService.GetCreditSchedule(context.Background(), creditID)
+	userID, err := strconv.Atoi(userIDStr.(string))
 	if err != nil {
-		h.logger.Error("Failed to get credit schedule", "credit_id", creditID, "error", err.Error())
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		return
+	}
+
+	schedule, err := h.creditService.GetCreditSchedule(r.Context(), userID, creditID)
+	if err != nil {
+		h.logger.Error("Failed to get credit schedule", "credit_id", creditID, "user_id", userID, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -74,7 +73,7 @@ func (h *AnalyticsHandler) GetMonthlyStats(w http.ResponseWriter, r *http.Reques
 	// Получаем текущий месяц по умолчанию
 	now := time.Now()
 
-	stats, err := h.analyticsService.GetMonthlyStatistics(context.Background(), userID, now)
+	stats, err := h.analyticsService.GetMonthlyStatistics(r.Context(), userID, now)
 	if err != nil {
 		h.logger.Error("Failed to get monthly stats", "user_id", userID, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
@@ -106,7 +105,7 @@ func (h *AnalyticsHandler) GetCreditLoad(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	creditLoad, err := h.analyticsService.GetCreditLoad(context.Background(), userID)
+	creditLoad, err := h.analyticsService.GetCreditLoad(r.Context(), userID)
 	if err != nil {
 		h.logger.Error("Failed to get credit load", "user_id", userID, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
@@ -142,7 +141,19 @@ func (h *AnalyticsHandler) PredictBalance(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	prediction, err := h.analyticsService.PredictBalance(context.Background(), accountID, req.Days)
+	userIDStr := r.Context().Value("userID")
+	if userIDStr == nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr.(string))
+	if err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		return
+	}
+
+	prediction, err := h.analyticsService.PredictBalance(r.Context(), userID, accountID, req.Days)
 	if err != nil {
 		h.logger.Error("Failed to predict balance", "account_id", accountID, "days", req.Days, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -76,7 +75,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	}
 
-	user, err := h.authService.Register(context.Background(), serviceReq)
+	user, err := h.authService.Register(r.Context(), serviceReq)
 	if err != nil {
 		logger.LogSecurityEvent(h.logger, "registration_failed", "high", map[string]interface{}{
 			"email": req.Email,
@@ -141,7 +140,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	}
 
-	token, err := h.authService.Login(context.Background(), serviceReq)
+	token, err := h.authService.Login(r.Context(), serviceReq)
 	if err != nil {
 		logger.LogSecurityEvent(h.logger, "login_failed", "high", map[string]interface{}{
 			"email": req.Email,

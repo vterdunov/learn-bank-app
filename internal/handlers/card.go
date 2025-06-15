@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -82,12 +81,23 @@ func (h *CardHandler) CreateCard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Проверка прав доступа выполняется в middleware
+	// Получение userID из контекста
+	userIDStr := r.Context().Value("userID")
+	if userIDStr == nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr.(string))
+	if err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		return
+	}
 
 	// Создание карты
-	card, err := h.cardService.CreateCard(context.Background(), accountID)
+	card, err := h.cardService.CreateCard(r.Context(), userID, accountID)
 	if err != nil {
-		h.logger.Error("Failed to create card", "account_id", accountID, "error", err.Error())
+		h.logger.Error("Failed to create card", "account_id", accountID, "user_id", userID, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -113,12 +123,23 @@ func (h *CardHandler) GetAccountCards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Проверка прав доступа выполняется в middleware
+	// Получение userID из контекста
+	userIDStr := r.Context().Value("userID")
+	if userIDStr == nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr.(string))
+	if err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		return
+	}
 
 	// Получение карт
-	cards, err := h.cardService.GetAccountCards(context.Background(), accountID)
+	cards, err := h.cardService.GetAccountCards(r.Context(), userID, accountID)
 	if err != nil {
-		h.logger.Error("Failed to get account cards", "account_id", accountID, "error", err.Error())
+		h.logger.Error("Failed to get account cards", "account_id", accountID, "user_id", userID, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -164,12 +185,24 @@ func (h *CardHandler) CardPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Проверка прав доступа выполняется в middleware
+	// Получение userID из контекста
+	userIDStr := r.Context().Value("userID")
+	if userIDStr == nil {
+		WriteErrorResponse(w, http.StatusUnauthorized, fmt.Errorf("user not authenticated"))
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr.(string))
+	if err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid user ID"))
+		return
+	}
 
 	// Выполнение платежа
-	if err := h.cardService.ProcessPayment(context.Background(), cardID, req.Amount); err != nil {
+	if err := h.cardService.ProcessPayment(r.Context(), userID, cardID, req.Amount); err != nil {
 		h.logger.Error("Failed to process card payment",
 			"card_id", cardID,
+			"user_id", userID,
 			"amount", req.Amount,
 			"error", err.Error())
 

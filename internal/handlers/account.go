@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -106,7 +105,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		Currency: "RUB", // По умолчанию RUB согласно ТЗ
 	}
 
-	account, err := h.accountService.CreateAccount(context.Background(), userID, serviceReq)
+	account, err := h.accountService.CreateAccount(r.Context(), userID, serviceReq)
 	if err != nil {
 		h.logger.Error("Failed to create account", "user_id", userID, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
@@ -139,7 +138,7 @@ func (h *AccountHandler) GetUserAccounts(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Получение счетов
-	accounts, err := h.accountService.GetUserAccounts(context.Background(), userID)
+	accounts, err := h.accountService.GetUserAccounts(r.Context(), userID)
 	if err != nil {
 		h.logger.Error("Failed to get user accounts", "user_id", userID, "error", err.Error())
 		WriteErrorResponse(w, http.StatusInternalServerError, err)
