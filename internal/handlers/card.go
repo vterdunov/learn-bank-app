@@ -82,6 +82,35 @@ func (h *CardHandler) CreateCard(w http.ResponseWriter, r *http.Request) {
 	WriteSuccessResponse(w, response)
 }
 
+// GetAccountCards получает карты по номеру счета
+func (h *CardHandler) GetAccountCards(w http.ResponseWriter, r *http.Request) {
+	accountIDStr := r.PathValue("accountId")
+	if accountIDStr == "" {
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("account ID required"))
+		return
+	}
+
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		WriteErrorResponse(w, http.StatusBadRequest, fmt.Errorf("invalid account ID"))
+		return
+	}
+
+	cards, err := h.cardService.GetAccountCards(context.Background(), accountID)
+	if err != nil {
+		h.logger.Error("Failed to get account cards", "account_id", accountID, "error", err.Error())
+		WriteErrorResponse(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	var responses []*CardResponse
+	for _, card := range cards {
+		responses = append(responses, CardToResponse(card, "****-****-****-XXXX"))
+	}
+
+	WriteSuccessResponse(w, responses)
+}
+
 // ProcessPayment обрабатывает оплату картой
 func (h *CardHandler) ProcessPayment(w http.ResponseWriter, r *http.Request) {
 	var req CardPaymentRequest
